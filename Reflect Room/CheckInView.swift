@@ -1,15 +1,17 @@
 //
 //  CheckInView.swift
-//  ReflectRoom
+//  Reflect Room
 //
-//  Created by Andrew Lawrence on 6/15/25.
+//  Created by Andrew Lawrence on 10/30/25.
 //
+
 import SwiftUI
 import AVKit
 import CoreData
 
 struct CheckInView: View {
     @Environment(\.managedObjectContext) private var viewContext
+    var selectedMood: String   // ← new property
 
     @State private var showVideoRecorder = false
     @State private var videoURL: URL?
@@ -100,6 +102,7 @@ struct CheckInView: View {
         newEntry.timestamp = Date()
         newEntry.text = reflectionText
         newEntry.videoPath = savedVideoPath // Optional, can be nil
+        newEntry.mood = selectedMood
 
         do {
             try viewContext.save()
