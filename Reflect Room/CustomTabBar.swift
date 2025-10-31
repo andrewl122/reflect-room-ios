@@ -2,58 +2,78 @@
 //  CustomTabBar.swift
 //  ReflectRoom
 //
-//  Created by Andrew Lawrence on 6/15/25.
+//  Created by Andrew Lawrence on 10/30/25.
 //
+
 import SwiftUI
 
+// MARK: - Tab Enum
+enum Tab {
+    case home
+    case timeline
+    case settings
+}
+
+// MARK: - Custom Tab Bar
 struct CustomTabBar: View {
+    @Binding var selectedTab: Tab
+
     var body: some View {
         HStack {
             Spacer()
-            VStack {
-                Image(systemName: "house")
-                Text("Home")
+
+            // Home Tab
+            Button(action: { selectedTab = .home }) {
+                VStack(spacing: 6) {
+                    Image(systemName: "house.fill")
+                        .font(.system(size: 22))
+                    Text("Home")
+                        .font(.caption)
+                }
+                .foregroundColor(selectedTab == .home ? .purple : .gray)
             }
-            .foregroundColor(Color(UIColor.label))
 
             Spacer()
-            VStack {
-                Image(systemName: "clock")
-                Text("Timeline")
+
+            // Reflections Tab
+            Button(action: { selectedTab = .timeline }) {
+                VStack(spacing: 6) {
+                    Image(systemName: "sparkles.tv.fill") 
+                        .font(.system(size: 22))
+                    Text("Reflections")
+                        .font(.caption)
+                }
+                .foregroundColor(selectedTab == .timeline ? .purple : .gray)
             }
-            .foregroundColor(Color(UIColor.label))
 
             Spacer()
-            VStack {
-                Image(systemName: "gearshape")
-                Text("Settings")
+
+            // Settings Tab
+            Button(action: { selectedTab = .settings }) {
+                VStack(spacing: 6) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 22))
+                    Text("Settings")
+                        .font(.caption)
+                }
+                .foregroundColor(selectedTab == .settings ? .purple : .gray)
             }
-            .foregroundColor(Color(UIColor.label))
 
             Spacer()
         }
-        .padding()
+        .padding(.vertical, 10)
         .background(
-            Color(UIColor.systemBackground)
-                .opacity(1.0)
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(UIColor.systemBackground))
+                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 3)
         )
-        .cornerRadius(16)
-        .shadow(radius: 5)
+        .padding(.horizontal)
     }
 }
 
-struct CustomTabBar_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            CustomTabBar()
-                .previewLayout(.sizeThatFits)
-                .preferredColorScheme(.light)
-                .padding()
-
-            CustomTabBar()
-                .previewLayout(.sizeThatFits)
-                .preferredColorScheme(.dark)
-                .padding()
-        }
-    }
+// MARK: - Preview
+#Preview {
+    CustomTabBar(selectedTab: .constant(.home))
+        .previewLayout(.sizeThatFits)
+        .padding()
 }
