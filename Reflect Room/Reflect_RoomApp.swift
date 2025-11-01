@@ -1,12 +1,11 @@
 //
 //  Reflect_RoomApp.swift
-//  Reflect Room
-//
-//  Created by Andrew Lawrence on 10/30/25.
+//  ReflectRoom
 //
 
 import SwiftUI
 import CoreData
+
 
 @main
 struct Reflect_RoomApp: App {
@@ -14,9 +13,8 @@ struct Reflect_RoomApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            LoadingView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
         }
     }
 }
-
