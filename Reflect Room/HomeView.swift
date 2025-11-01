@@ -24,6 +24,7 @@ struct MoodStat: Identifiable, Equatable {
     }
 }
 
+// MARK: - HomeView
 struct HomeView: View {
     @State private var selectedMood: String? = nil
     @State private var navigateToCheckIn = false
@@ -31,14 +32,14 @@ struct HomeView: View {
     @State private var showInsightsView = false
     @Environment(\.colorScheme) var colorScheme
 
-    // Fetch reflection entries from Core Data
+    // MARK: - Core Data Fetch
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \ReflectionEntry.timestamp, ascending: false)],
         animation: .default
     )
     private var reflections: FetchedResults<ReflectionEntry>
 
-    // Compute mood statistics for chart (last 30 days)
+    // MARK: - Mood Stats
     private var moodData: [MoodStat] {
         let moods = ["Happy", "Okay", "Sad", "Anxious", "Angry"]
         let emojis = ["😊", "😐", "😢", "😰", "😠"]
@@ -62,32 +63,22 @@ struct HomeView: View {
         return stats
     }
 
+    // MARK: - View Body
     var body: some View {
         VStack(spacing: 0) {
             if selectedTab == .home {
                 NavigationView {
                     ZStack {
-                        ReflectRoomBackground() // 🌈 animated gradient background
+                        ReflectRoomBackground() // 🌈 Animated gradient background
 
                         VStack(spacing: 30) {
-                            Spacer()
+                            Spacer(minLength: 20)
 
                             // Greeting
-                            Text("Hi Andrew,\nTap your mood to begin.")
-                                .font(.system(size: 30, weight: .semibold))
-                                .multilineTextAlignment(.center)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal)
+                            greetingSection
 
                             // Mood Buttons
-                            HStack(spacing: 20) {
-                                moodButton("😊", mood: "Happy")
-                                moodButton("😐", mood: "Okay")
-                                moodButton("😢", mood: "Sad")
-                                moodButton("😰", mood: "Anxious")
-                                moodButton("😠", mood: "Angry")
-                            }
-                            .padding(.bottom, 10)
+                            moodButtonRow
 
                             // Hidden Navigation Trigger
                             NavigationLink(
@@ -95,85 +86,8 @@ struct HomeView: View {
                                 isActive: $navigateToCheckIn
                             ) { EmptyView() }
 
-                            // 🔮 Mood Overview Section
-                            VStack(spacing: 16) {
-                                Text("Your Mood Overview")
-                                    .font(.headline)
-                                    .foregroundColor(.purple)
-                                    .padding(.top, 4)
-
-                                if moodData.isEmpty {
-                                    Text("No reflections yet. Start your first check-in today!")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                        .padding(.horizontal)
-                                        .multilineTextAlignment(.center)
-                                } else {
-                                    // Chart and legend wrapped in tappable container
-                                    Button(action: { showInsightsView = true }) {
-                                        ZStack {
-                                            LinearGradient(
-                                                gradient: Gradient(colors: colorScheme == .dark
-                                                                    ? [Color.purple.opacity(0.25), Color.black.opacity(0.4)]
-                                                                    : [Color.purple.opacity(0.15), Color.blue.opacity(0.1)]),
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            )
-                                            .cornerRadius(16)
-                                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-
-                                            VStack(spacing: 12) {
-                                                // Chart
-                                                Chart {
-                                                    ForEach(moodData) { stat in
-                                                        BarMark(
-                                                            x: .value("Mood", stat.emoji),
-                                                            y: .value("Count", stat.count)
-                                                        )
-                                                        .foregroundStyle(colorForMood(stat.mood))
-                                                        .cornerRadius(6)
-                                                        .annotation {
-                                                            Text("\(stat.count)")
-                                                                .font(.caption)
-                                                                .foregroundColor(.secondary)
-                                                        }
-                                                    }
-                                                }
-                                                .frame(height: 180)
-                                                .padding(.horizontal)
-                                                .chartLegend(.hidden) // ❌ remove default legend
-                                                .chartYAxis(.hidden)
-                                                .chartXAxis {
-                                                    AxisMarks(preset: .aligned, values: moodData.map { $0.emoji })
-                                                }
-                                                .animation(.easeInOut(duration: 0.4), value: moodData)
-
-                                                // 👇 Custom centered legend
-                                                HStack(spacing: 14) {
-                                                    ForEach(moodData, id: \.mood) { stat in
-                                                        HStack(spacing: 6) {
-                                                            Circle()
-                                                                .fill(colorForMood(stat.mood))
-                                                                .frame(width: 10, height: 10)
-                                                            Text(stat.mood)
-                                                                .font(.caption)
-                                                                .foregroundColor(.primary)
-                                                        }
-                                                    }
-                                                }
-                                                .padding(.bottom, 6)
-                                                .padding(.top, 4)
-                                            }
-                                            .padding(.vertical, 10)
-                                        }
-                                        .padding(.horizontal)
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
-                                    .sheet(isPresented: $showInsightsView) {
-                                        MoodInsightsView(reflections: reflections)
-                                    }
-                                }
-                            }
+                            // Mood Overview Chart
+                            moodOverviewSection
 
                             Spacer(minLength: 40)
                         }
@@ -191,7 +105,106 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Mood Button Builder
+    // MARK: - Greeting Section
+    private var greetingSection: some View {
+        Text("Hi Andrew,\nTap your mood to begin.")
+            .font(.system(size: 30, weight: .semibold))
+            .multilineTextAlignment(.center)
+            .foregroundColor(.primary)
+            .padding(.horizontal)
+    }
+
+    // MARK: - Mood Buttons Row
+    private var moodButtonRow: some View {
+        HStack(spacing: 20) {
+            moodButton("😊", mood: "Happy")
+            moodButton("😐", mood: "Okay")
+            moodButton("😢", mood: "Sad")
+            moodButton("😰", mood: "Anxious")
+            moodButton("😠", mood: "Angry")
+        }
+        .padding(.bottom, 10)
+    }
+
+    // MARK: - Mood Overview Chart Section
+    private var moodOverviewSection: some View {
+        VStack(spacing: 16) {
+            Text("Your Mood Overview")
+                .font(.headline)
+                .foregroundColor(.purple)
+                .padding(.top, 4)
+
+            if moodData.isEmpty {
+                Text("No reflections yet. Start your first check-in today!")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
+                    .multilineTextAlignment(.center)
+            } else {
+                Button(action: { showInsightsView = true }) {
+                    ZStack {
+                        LinearGradient(
+                            gradient: Gradient(colors: colorScheme == .dark
+                                ? [Color.purple.opacity(0.25), Color.black.opacity(0.4)]
+                                : [Color.purple.opacity(0.15), Color.blue.opacity(0.1)]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .cornerRadius(16)
+                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+
+                        VStack(spacing: 12) {
+                            // Chart
+                            Chart {
+                                ForEach(moodData) { stat in
+                                    BarMark(
+                                        x: .value("Mood", stat.emoji),
+                                        y: .value("Count", stat.count)
+                                    )
+                                    .foregroundStyle(colorForMood(stat.mood))
+                                    .cornerRadius(6)
+                                    .annotation {
+                                        Text("\(stat.count)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                            .frame(height: 180)
+                            .padding(.horizontal)
+                            .chartLegend(.hidden)
+                            .chartYAxis(.hidden)
+                            .animation(.easeInOut(duration: 0.4), value: moodData)
+
+                            // Custom Legend Centered at Bottom
+                            HStack(spacing: 14) {
+                                ForEach(moodData, id: \.mood) { stat in
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(colorForMood(stat.mood))
+                                            .frame(width: 10, height: 10)
+                                        Text(stat.mood)
+                                            .font(.caption)
+                                            .foregroundColor(.primary)
+                                    }
+                                }
+                            }
+                            .padding(.bottom, 6)
+                            .padding(.top, 4)
+                        }
+                        .padding(.vertical, 10)
+                    }
+                    .padding(.horizontal)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .sheet(isPresented: $showInsightsView) {
+                    MoodInsightsView(reflections: reflections)
+                }
+            }
+        }
+    }
+
+    // MARK: - Mood Button Template
     private func moodButton(_ emoji: String, mood: String) -> some View {
         Button(action: {
             selectedMood = mood
