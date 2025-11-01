@@ -1,8 +1,8 @@
 //
 //  VideoFileManager.swift
-//  ReflectRoom
+//  Reflect Room
 //
-//  Created by Andrew Lawrence on 10/26/25.
+//  Created by Andrew Lawrence on 10/30/25.
 //
 
 import Foundation
@@ -10,6 +10,8 @@ import Foundation
 struct VideoFileManager {
     static let shared = VideoFileManager()
 
+    /// Save a recorded video to the app’s Documents folder.
+    /// Returns the filename (not full path) for Core Data storage.
     func saveVideoToDocuments(videoURL: URL) -> String? {
         let fileManager = FileManager.default
         let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -18,48 +20,45 @@ struct VideoFileManager {
 
         do {
             try fileManager.copyItem(at: videoURL, to: destinationURL)
-            return destinationURL.path
+            print("✅ Video saved at: \(destinationURL.path)")
+            return filename  // ✅ only return filename, not full absolute path
         } catch {
-            print("Error saving video to documents directory: \(error.localizedDescription)")
+            print("❌ Error saving video: \(error.localizedDescription)")
             return nil
         }
     }
 
-    /// Delete a video at the given path string
-    /// - Parameter path: The local path of the saved video (from Core Data)
+    /// Delete a saved video by filename
     static func deleteVideo(at path: String) {
-        let fileManager = FileManager.default
-        let url = URL(fileURLWithPath: path)
+        let documents = documentsDirectory()
+        let fileURL = documents.appendingPathComponent(path)
 
-        if fileManager.fileExists(atPath: url.path) {
+        if FileManager.default.fileExists(atPath: fileURL.path) {
             do {
-                try fileManager.removeItem(at: url)
-                print("Successfully deleted video at \(url.path)")
+                try FileManager.default.removeItem(at: fileURL)
+                print("🗑️ Deleted video at \(fileURL.lastPathComponent)")
             } catch {
-                print("Failed to delete video: \(error.localizedDescription)")
+                print("❌ Failed to delete video: \(error.localizedDescription)")
             }
         } else {
-            print("No video found at path: \(url.path)")
+            print("⚠️ No video found at \(fileURL.lastPathComponent)")
         }
     }
 
-    /// Retrieve the app's documents directory URL
+    /// Retrieve the app's Documents directory URL
     static func documentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
     }
 
-    /// Optional: Get list of saved videos (e.g., for future playback screen)
+    /// List all saved `.mov` files
     static func listAllSavedVideos() -> [URL] {
         let documents = documentsDirectory()
-        let fileManager = FileManager.default
-
         do {
-            let fileURLs = try fileManager.contentsOfDirectory(at: documents, includingPropertiesForKeys: nil)
+            let fileURLs = try FileManager.default.contentsOfDirectory(at: documents, includingPropertiesForKeys: nil)
             return fileURLs.filter { $0.pathExtension == "mov" }
         } catch {
-            print("Error reading documents directory: \(error.localizedDescription)")
+            print("❌ Error reading documents directory: \(error.localizedDescription)")
             return []
         }
     }
 }
-

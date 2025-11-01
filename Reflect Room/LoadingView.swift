@@ -2,143 +2,110 @@
 //  LoadingView.swift
 //  ReflectRoom
 //
-//  Created by Andrew Lawrence on 10/31/25.
+//  Created by Andrew Lawrence on 11/1/25.
 //
 
 import SwiftUI
 
 struct LoadingView: View {
-    @State private var showHome = false
-    @State private var quote = ""
-    @State private var fadeIn = false
-    @State private var fadeOut = false
-    @State private var animateGradient = false
-    @State private var breathing = false // 🌬️ breathing pulse
+    @State private var hueRotate = false
+    @State private var navigateToHome = false
+    @Environment(\.colorScheme) var colorScheme
 
-    // 🧠 Motivational / mental health quotes
-    let quotes = [
-        "Healing doesn’t mean the damage never existed. It means it no longer controls you.",
-        "You don’t have to control your thoughts; you just have to stop letting them control you.",
-        "Growth is uncomfortable because you’ve never been here before.",
-        "Your feelings are valid. Don’t minimize your own emotions.",
-        "The way you speak to yourself matters more than you think.",
-        "Every day may not be good, but there’s something good in every day.",
-        "You are not your mistakes — you are the lesson they taught you.",
-        "Peace begins the moment you choose not to allow another person or event to control your emotions.",
-        "Sometimes rest is the most productive thing you can do for yourself.",
-        "You’re allowed to outgrow people, places, and versions of yourself that no longer fit.",
-        "Progress isn’t always visible — healing often happens quietly.",
-        "You can’t pour from an empty cup. Take time to refill.",
-        "It’s okay to feel lost sometimes — it’s part of finding your way.",
-        "What you feel is real. What you do with it is what shapes you.",
-        "You are doing better than you think you are.",
-        "Be proud of how far you’ve come, even if you’re not where you want to be yet.",
-        "You are not behind — you’re on your own timeline.",
-        "Let go of the need to be perfect; embrace the effort instead.",
-        "Healing takes time. Be patient and gentle with yourself.",
-        "Every small act of self-care is a victory worth celebrating.",
-        "Sometimes strength looks like saying 'no' and choosing peace.",
-        "You’re learning, growing, and becoming — and that’s enough.",
-        "Your story isn’t over — you’re still writing the best parts.",
-        "Feel your emotions, but don’t let them define you.",
-        "It’s okay to take a break. You’re human, not a machine.",
-        "Your emotions are valid; your feelings have value.",
-        "When you can’t find the sunshine, be the sunshine.",
-        "The comeback is always stronger than the setback.",
-        "You have survived 100% of your hardest days.",
-        "Your peace is worth protecting — even from your own thoughts.",
-        "Allow yourself to be a work in progress.",
-        "Sometimes, healing looks like rest, not productivity.",
-        "You deserve the same compassion you give to others.",
-        "It’s okay to not have it all figured out right now.",
-        "Even small steps forward count as progress.",
-        "Let today be the day you choose yourself.",
-        "There is strength in being soft.",
-        "You can begin again, as many times as you need.",
-        "You are enough, even on your quiet days.",
-        "Peace doesn’t mean you have no problems; it means they no longer control you."
+    private let quotes = [
+        "Healing starts when honesty meets reflection.",
+        "You grow through what you go through.",
+        "Your emotions are valid, always.",
+        "Peace begins the moment you choose yourself.",
+        "Be patient with your becoming.",
+        "Feel it. Name it. Release it.",
+        "Awareness is the first step to change.",
+        "Progress, not perfection.",
+        "Every thought is a doorway to understanding.",
+        "Even silence is part of reflection.",
+        "You can’t heal what you don’t reveal.",
+        "Stillness speaks louder than chaos.",
+        "You don’t have to rush your healing.",
+        "Your feelings are feedback, not failure.",
+        "Be gentle with the parts of you still learning.",
+        "Growth is quieter than people think.",
+        "You are allowed to start over at any time.",
+        "Clarity comes when you stop running from yourself.",
+        "Your story is still being written—grace belongs in every chapter.",
+        "Reflection is not looking back—it’s looking within."
     ]
 
     var body: some View {
         ZStack {
-            // 🌈 Animated Gradient Background with Breathing Effect
+            // 🌈 Animated hue-rotating gradient
             LinearGradient(
                 gradient: Gradient(colors: [
                     Color(red: 216/255, green: 190/255, blue: 255/255),
-                    Color(red: 200/255, green: 220/255, blue: 255/255),
-                    Color.white
+                    Color(red: 170/255, green: 210/255, blue: 255/255),
+                    Color(red: 255/255, green: 240/255, blue: 255/255)
                 ]),
-                startPoint: animateGradient ? .topLeading : .bottomTrailing,
-                endPoint: animateGradient ? .bottomTrailing : .topLeading
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
             )
+            .hueRotation(.degrees(hueRotate ? 360 : 0))
             .animation(
-                Animation.linear(duration: 12)
-                    .repeatForever(autoreverses: true),
-                value: animateGradient
-            )
-            // 🌬️ Breathing brightness pulse
-            .brightness(breathing ? 0.05 : -0.05)
-            .animation(
-                Animation.easeInOut(duration: 5)
-                    .repeatForever(autoreverses: true),
-                value: breathing
+                .linear(duration: 10).repeatForever(autoreverses: false),
+                value: hueRotate
             )
             .ignoresSafeArea()
 
             VStack(spacing: 40) {
                 Spacer()
 
-                // 🪞 App Title
+                // App title
                 Text("Reflect Room")
-                    .font(.system(size: 40, weight: .bold))
-                    .foregroundColor(.purple.opacity(0.9))
-                    .opacity(fadeIn ? 1 : 0)
-                    .animation(.easeIn(duration: 1.5), value: fadeIn)
+                    .font(.system(size: 40, weight: .semibold))
+                    .foregroundColor(sharedColor)
+                    .transition(.opacity)
 
-                // 💬 Random Quote
-                Text("“\(quote)”")
+                // One random quote
+                Text(quotes.randomElement() ?? "Your reflection starts here.")
                     .font(.title3)
-                    .italic()
                     .multilineTextAlignment(.center)
-                    .foregroundColor(.primary)
+                    .foregroundColor(sharedColor)
                     .padding(.horizontal)
-                    .opacity(fadeIn ? 1 : 0)
-                    .animation(.easeIn(duration: 2.5).delay(0.5), value: fadeIn)
+                    .frame(maxWidth: 320)
 
                 Spacer()
 
-                // 🔄 Loading Indicator
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .purple))
-                    .scaleEffect(1.5)
-                    .opacity(fadeIn ? 1 : 0)
-                    .animation(.easeInOut(duration: 2.0).delay(1.0), value: fadeIn)
-                    .padding(.bottom, 80)
+                // Footer line (same color as title & quote)
+                Text("Loading your reflection space...")
+                    .font(.footnote)
+                    .foregroundColor(sharedColor)
+                    .padding(.bottom, 30)
             }
-            .opacity(fadeOut ? 0 : 1)
-            .animation(.easeOut(duration: 1.2).delay(6.0), value: fadeOut)
+
+            // Fade to HomeView after delay
+            if navigateToHome {
+                HomeView()
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 1.5), value: navigateToHome)
+            }
         }
         .onAppear {
-            // 🌤️ Setup animations and transitions
-            quote = quotes.randomElement() ?? ""
-            fadeIn = true
-            animateGradient = true
-            breathing = true
+            hueRotate = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+                withAnimation {
+                    navigateToHome = true
+                }
+            }
+        }
+    }
 
-            // Trigger fade-out and transition
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6.0) {
-                fadeOut = true
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
-                showHome = true
-            }
-        }
-        .fullScreenCover(isPresented: $showHome) {
-            HomeView()
-        }
+    // Adaptive shared color used for title, quote, and footer
+    private var sharedColor: Color {
+        colorScheme == .dark ? Color.white.opacity(0.9) : Color.black.opacity(0.9)
     }
 }
 
 #Preview {
-    LoadingView()
+    Group {
+        LoadingView().preferredColorScheme(.light)
+        LoadingView().preferredColorScheme(.dark)
+    }
 }

@@ -1,6 +1,6 @@
 //
 //  HomeView.swift
-//  ReflectRoom
+//  Reflect Room
 //
 //  Created by Andrew Lawrence on 10/30/25.
 //
@@ -28,6 +28,8 @@ struct HomeView: View {
     @State private var selectedMood: String? = nil
     @State private var navigateToCheckIn = false
     @State private var selectedTab: Tab = .home
+    @State private var showInsightsView = false
+    @Environment(\.colorScheme) var colorScheme
 
     // Fetch reflection entries from Core Data
     @FetchRequest(
@@ -36,14 +38,22 @@ struct HomeView: View {
     )
     private var reflections: FetchedResults<ReflectionEntry>
 
-    // Compute mood statistics for chart
+    // Compute mood statistics for chart (last 30 days)
     private var moodData: [MoodStat] {
         let moods = ["Happy", "Okay", "Sad", "Anxious", "Angry"]
         let emojis = ["😊", "😐", "😢", "😰", "😠"]
         var stats: [MoodStat] = []
 
+        let startDate = Calendar.current.date(byAdding: .day, value: -30, to: Date())!
+        let recentReflections = reflections.filter { entry in
+            if let timestamp = entry.timestamp {
+                return timestamp >= startDate
+            }
+            return false
+        }
+
         for (index, mood) in moods.enumerated() {
-            let count = reflections.filter { $0.mood == mood }.count
+            let count = recentReflections.filter { $0.mood == mood }.count
             if count > 0 {
                 stats.append(MoodStat(mood: mood, count: count, emoji: emojis[index]))
             }
@@ -57,21 +67,12 @@ struct HomeView: View {
             if selectedTab == .home {
                 NavigationView {
                     ZStack {
-                        // Background gradient
-                        LinearGradient(
-                            gradient: Gradient(colors: [
-                                Color(red: 216/255, green: 190/255, blue: 255/255),
-                                Color.white
-                            ]),
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .ignoresSafeArea()
+                        ReflectRoomBackground() // 🌈 animated gradient background
 
-                        VStack(spacing: 40) {
+                        VStack(spacing: 30) {
                             Spacer()
 
-                            // Greeting / Instruction
+                            // Greeting
                             Text("Hi Andrew,\nTap your mood to begin.")
                                 .font(.system(size: 30, weight: .semibold))
                                 .multilineTextAlignment(.center)
@@ -86,6 +87,7 @@ struct HomeView: View {
                                 moodButton("😰", mood: "Anxious")
                                 moodButton("😠", mood: "Angry")
                             }
+                            .padding(.bottom, 10)
 
                             // Hidden Navigation Trigger
                             NavigationLink(
@@ -93,14 +95,12 @@ struct HomeView: View {
                                 isActive: $navigateToCheckIn
                             ) { EmptyView() }
 
-                            Spacer()
-
-                            // 🔮 Mood Overview Chart
-                            VStack(alignment: .leading, spacing: 12) {
+                            // 🔮 Mood Overview Section
+                            VStack(spacing: 16) {
                                 Text("Your Mood Overview")
                                     .font(.headline)
                                     .foregroundColor(.purple)
-                                    .padding(.leading, 8)
+                                    .padding(.top, 4)
 
                                 if moodData.isEmpty {
                                     Text("No reflections yet. Start your first check-in today!")
@@ -109,32 +109,69 @@ struct HomeView: View {
                                         .padding(.horizontal)
                                         .multilineTextAlignment(.center)
                                 } else {
-                                    Chart(moodData) { stat in
-                                        BarMark(
-                                            x: .value("Mood", stat.emoji),
-                                            y: .value("Count", stat.count)
-                                        )
-                                        .foregroundStyle(by: .value("Mood", stat.mood))
-                                        .annotation {
-                                            Text("\(stat.count)")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
+                                    // Chart and legend wrapped in tappable container
+                                    Button(action: { showInsightsView = true }) {
+                                        ZStack {
+                                            LinearGradient(
+                                                gradient: Gradient(colors: colorScheme == .dark
+                                                                    ? [Color.purple.opacity(0.25), Color.black.opacity(0.4)]
+                                                                    : [Color.purple.opacity(0.15), Color.blue.opacity(0.1)]),
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                            .cornerRadius(16)
+                                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+
+                                            VStack(spacing: 12) {
+                                                // Chart
+                                                Chart {
+                                                    ForEach(moodData) { stat in
+                                                        BarMark(
+                                                            x: .value("Mood", stat.emoji),
+                                                            y: .value("Count", stat.count)
+                                                        )
+                                                        .foregroundStyle(colorForMood(stat.mood))
+                                                        .cornerRadius(6)
+                                                        .annotation {
+                                                            Text("\(stat.count)")
+                                                                .font(.caption)
+                                                                .foregroundColor(.secondary)
+                                                        }
+                                                    }
+                                                }
+                                                .frame(height: 180)
+                                                .padding(.horizontal)
+                                                .chartLegend(.hidden) // ❌ remove default legend
+                                                .chartYAxis(.hidden)
+                                                .chartXAxis {
+                                                    AxisMarks(preset: .aligned, values: moodData.map { $0.emoji })
+                                                }
+                                                .animation(.easeInOut(duration: 0.4), value: moodData)
+
+                                                // 👇 Custom centered legend
+                                                HStack(spacing: 14) {
+                                                    ForEach(moodData, id: \.mood) { stat in
+                                                        HStack(spacing: 6) {
+                                                            Circle()
+                                                                .fill(colorForMood(stat.mood))
+                                                                .frame(width: 10, height: 10)
+                                                            Text(stat.mood)
+                                                                .font(.caption)
+                                                                .foregroundColor(.primary)
+                                                        }
+                                                    }
+                                                }
+                                                .padding(.bottom, 6)
+                                                .padding(.top, 4)
+                                            }
+                                            .padding(.vertical, 10)
                                         }
-                                        .cornerRadius(6)
+                                        .padding(.horizontal)
                                     }
-                                    .frame(height: 180)
-                                    .padding(.horizontal)
-                                    .chartYAxis(.hidden)
-                                    .chartXAxis {
-                                        AxisMarks(preset: .aligned, values: moodData.map { $0.emoji })
+                                    .buttonStyle(PlainButtonStyle())
+                                    .sheet(isPresented: $showInsightsView) {
+                                        MoodInsightsView(reflections: reflections)
                                     }
-                                    // ✨ Smooth Bounce Animation
-                                    .animation(
-                                        .interpolatingSpring(stiffness: 80, damping: 8)
-                                        .delay(0.05)
-                                        .speed(0.9),
-                                        value: moodData
-                                    )
                                 }
                             }
 
@@ -149,7 +186,7 @@ struct HomeView: View {
                 SettingsView()
             }
 
-            // Always show Custom Tab Bar
+            // Custom Tab Bar
             CustomTabBar(selectedTab: $selectedTab)
         }
     }
@@ -170,30 +207,26 @@ struct HomeView: View {
             .padding(8)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.2))
+                    .fill(Color.white.opacity(colorScheme == .dark ? 0.05 : 0.2))
                     .shadow(radius: 1)
             )
         }
     }
-}
 
-// MARK: - Placeholder SettingsView
-struct SettingsView: View {
-    var body: some View {
-        VStack {
-            Text("Settings")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .padding()
-            Text("This screen will hold privacy options, app lock, and preferences soon.")
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-                .padding()
-            Spacer()
+    // MARK: - Mood Color Mapping
+    private func colorForMood(_ mood: String) -> Color {
+        switch mood.lowercased() {
+        case "happy": return .yellow
+        case "okay": return .gray
+        case "sad": return .blue
+        case "anxious": return .orange
+        case "angry": return .red
+        default: return .purple
         }
     }
 }
 
 #Preview {
     HomeView()
+        .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }

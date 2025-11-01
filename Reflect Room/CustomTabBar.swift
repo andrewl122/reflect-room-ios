@@ -7,73 +7,82 @@
 
 import SwiftUI
 
-// MARK: - Tab Enum
-enum Tab {
-    case home
-    case timeline
-    case settings
+enum Tab: String, CaseIterable {
+    case home = "house"
+    case timeline = "calendar"
+    case settings = "gear"
 }
 
-// MARK: - Custom Tab Bar
 struct CustomTabBar: View {
     @Binding var selectedTab: Tab
+    @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        HStack {
-            Spacer()
+        ZStack {
+            // Background blur for modern glassy look
+            VisualEffectView(effect: UIBlurEffect(style: colorScheme == .dark ? .systemUltraThinMaterialDark : .systemUltraThinMaterialLight))
+                .ignoresSafeArea(edges: .bottom)
 
-            // Home Tab
-            Button(action: { selectedTab = .home }) {
-                VStack(spacing: 6) {
-                    Image(systemName: "house.fill")
-                        .font(.system(size: 22))
-                    Text("Home")
-                        .font(.caption)
+            HStack {
+                ForEach(Tab.allCases, id: \.self) { tab in
+                    Spacer()
+
+                    Button {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedTab = tab
+                        }
+                    } label: {
+                        VStack(spacing: 6) {
+                            Image(systemName: tab.rawValue)
+                                .font(.system(size: 22, weight: .semibold))
+                                .foregroundColor(selectedTab == tab ? .purple : .gray.opacity(0.7))
+                                .scaleEffect(selectedTab == tab ? 1.15 : 1.0)
+
+                            Text(label(for: tab))
+                                .font(.caption2)
+                                .foregroundColor(selectedTab == tab ? .purple : .gray.opacity(0.7))
+                        }
+                        .padding(.vertical, 8)
+                    }
+
+                    Spacer()
                 }
-                .foregroundColor(selectedTab == .home ? .purple : .gray)
             }
-
-            Spacer()
-
-            // Reflections Tab
-            Button(action: { selectedTab = .timeline }) {
-                VStack(spacing: 6) {
-                    Image(systemName: "sparkles.tv.fill") 
-                        .font(.system(size: 22))
-                    Text("Reflections")
-                        .font(.caption)
-                }
-                .foregroundColor(selectedTab == .timeline ? .purple : .gray)
-            }
-
-            Spacer()
-
-            // Settings Tab
-            Button(action: { selectedTab = .settings }) {
-                VStack(spacing: 6) {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 22))
-                    Text("Settings")
-                        .font(.caption)
-                }
-                .foregroundColor(selectedTab == .settings ? .purple : .gray)
-            }
-
-            Spacer()
+            .padding(.bottom, 8)
+            .background(Color.clear)
         }
-        .padding(.vertical, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color(UIColor.systemBackground))
-                .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 3)
-        )
-        .padding(.horizontal)
+        // 🔧 Critical: Remove gap above the tab bar
+        .ignoresSafeArea(edges: .bottom)
+        .frame(height: 75)
+    }
+
+    // MARK: - Label helper
+    private func label(for tab: Tab) -> String {
+        switch tab {
+        case .home: return "Home"
+        case .timeline: return "Reflections"
+        case .settings: return "Settings"
+        }
     }
 }
 
-// MARK: - Preview
+// MARK: - UIKit blur bridge for glass background
+struct VisualEffectView: UIViewRepresentable {
+    var effect: UIVisualEffect?
+    func makeUIView(context: Context) -> UIVisualEffectView {
+        UIVisualEffectView(effect: effect)
+    }
+    func updateUIView(_ uiView: UIVisualEffectView, context: Context) {
+        uiView.effect = effect
+    }
+}
+
 #Preview {
-    CustomTabBar(selectedTab: .constant(.home))
-        .previewLayout(.sizeThatFits)
-        .padding()
+    ZStack {
+        Color(.systemBackground).ignoresSafeArea()
+        VStack {
+            Spacer()
+            CustomTabBar(selectedTab: .constant(.home))
+        }
+    }
 }
