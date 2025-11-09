@@ -32,6 +32,10 @@ struct HomeView: View {
     @State private var showInsightsView = false
     @State private var isTabBarHidden = false
     @Environment(\.colorScheme) var scheme
+    
+    @AppStorage("didRequestNotificationPermission") private var didRequestNotificationPermission = false
+    @Environment(\.managedObjectContext) private var viewContext
+
 
     // MARK: - Core Data
     @FetchRequest(
@@ -179,6 +183,13 @@ struct HomeView: View {
 
             if !isTabBarHidden {
                 CustomTabBar(selectedTab: $selectedTab)
+            }
+        }
+        .onAppear {
+            if !didRequestNotificationPermission {
+                NotificationManager.shared.requestPermissionAndScheduleDefaults(context: viewContext)
+                didRequestNotificationPermission = true
+                print("🔔 Notification permission requested and reminders scheduled.")
             }
         }
     }
@@ -331,6 +342,7 @@ struct HomeView: View {
             )
         }
     }
+    
 
     // MARK: - Mood Color Mapping
     private func colorForMood(_ mood: String) -> Color {

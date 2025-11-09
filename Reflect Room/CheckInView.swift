@@ -437,6 +437,8 @@ struct CheckInView: View {
 
         do {
             try viewContext.save()
+            // 🔔 Reschedule notifications dynamically when a new mood is saved
+            NotificationManager.shared.scheduleMoodBasedReminders(context: viewContext)
             print("✅ Reflection saved.")
             reflectionText = ""
             videoURL = nil
