@@ -59,12 +59,32 @@ struct CheckInView: View {
         .eraseToAnyPublisher()
     }
 
+    // MARK: - Dynamic Mood Caption (No Emoji)
+    private var moodCaption: String {
+        switch selectedMood.lowercased() {
+        case "happy":
+            return "Tap to capture what’s bringing you joy today."
+        case "sad":
+            return "Tap for gentle prompts to help you process your feelings."
+        case "anxious":
+            return "Tap for calming questions to ease your thoughts."
+        case "okay":
+            return "Tap to reflect on the small wins and steady moments."
+        case "grateful":
+            return "Tap to explore gratitude and appreciation."
+        case "tired":
+            return "Tap to reflect and recharge your mental energy."
+        default:
+            return "Tap to see guided prompts tailored to your mood."
+        }
+    }
+
+    // MARK: - Body
     var body: some View {
         ScrollViewReader { proxy in
             ZStack {
                 ReflectRoomBackground().ignoresSafeArea()
 
-                // MAIN CONTENT
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.lg) {
 
@@ -92,6 +112,54 @@ struct CheckInView: View {
                             .onChange(of: reflectionType) { _ in Haptics.tap() }
                         }
                         .cardBackground(scheme)
+
+                        // MARK: - Need Inspiration Card (Dynamic Mood, No Emoji)
+                        VStack(spacing: 6) {
+                            Button {
+                                Haptics.tap()
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                                    showPrompts.toggle()
+                                }
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "lightbulb.fill")
+                                        .font(.title3)
+                                        .foregroundColor(AppTheme.Colors.accent)
+                                    Text("Need Inspiration?")
+                                        .font(.headline)
+                                        .foregroundColor(AppTheme.Colors.textPrimary)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.subheadline)
+                                        .foregroundColor(AppTheme.Colors.accent)
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(
+                                    RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
+                                        .fill(AppTheme.Colors.cardBg(scheme))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
+                                                .stroke(AppTheme.Colors.accent.opacity(0.15), lineWidth: 1)
+                                        )
+                                        .shadow(color: .black.opacity(scheme == .dark ? 0.3 : 0.08),
+                                                radius: 4, x: 0, y: 2)
+                                )
+                                .scaleEffect(showPrompts ? 0.97 : 1.0)
+                                .animation(.easeInOut(duration: 0.2), value: showPrompts)
+                            }
+                            .buttonStyle(.plain)
+
+                            // Dynamic caption text (no emoji)
+                            Text(moodCaption)
+                                .font(.caption)
+                                .foregroundColor(AppTheme.Colors.textSecondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 10)
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, AppTheme.Spacing.sm)
+
 
                         // MARK: - Reflection Type Sections
                         Group {
@@ -126,29 +194,6 @@ struct CheckInView: View {
                                 .padding(.top, AppTheme.Spacing.sm)
                                 .padding(.bottom, AppTheme.Spacing.md)
                                 .id("ReflectionEditor")
-
-                            // MARK: - Need Inspiration Button
-                            Button {
-                                Haptics.tap()
-                                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                                    showPrompts.toggle()
-                                }
-                            } label: {
-                                HStack {
-                                    Image(systemName: "lightbulb.fill")
-                                    Text("Need Inspiration?")
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                }
-                                .font(.subheadline.bold())
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(AppTheme.Colors.accent.opacity(0.1))
-                                .foregroundColor(AppTheme.Colors.accent)
-                                .cornerRadius(AppTheme.Radii.lg)
-                                .padding(.horizontal, AppTheme.Spacing.md)
-                                .padding(.bottom, AppTheme.Spacing.md)
-                            }
                         }
                         .background(
                             RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
@@ -176,7 +221,7 @@ struct CheckInView: View {
                                     reflections: Array(reflections),
                                     isPremium: isPremiumUser,
                                     reflectionText: $reflectionText,
-                                    selectedMood: selectedMood   // ✅ Pass current mood to prompt engine
+                                    selectedMood: selectedMood
                                 )
                                 .onDisappear {
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -192,7 +237,6 @@ struct CheckInView: View {
                                 .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showPrompts)
                             }
                         }
-
 
                         // MARK: - Save Button
                         Button(action: saveAndNotify) {
@@ -475,4 +519,3 @@ private struct CardBGShim: ViewModifier {
                     radius: 4, x: 0, y: 2)
     }
 }
-
