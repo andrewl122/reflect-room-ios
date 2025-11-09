@@ -32,10 +32,18 @@ struct CheckInView: View {
     // MARK: - Text
     @State private var reflectionText = ""
 
-    // MARK: - Mode (default video)
+    // MARK: - Mode
     @State private var reflectionType: String = "video"
 
-    // MARK: - Save Feedback
+    // MARK: - Prompts
+    @State private var showPrompts = false
+    @State private var isPremiumUser = false
+
+    // MARK: - Reflections Fetch
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \ReflectionEntry.timestamp, ascending: false)])
+    private var reflections: FetchedResults<ReflectionEntry>
+
+    // MARK: - Feedback
     @State private var showSuccessBanner = false
 
     // MARK: - Keyboard Handling
@@ -59,6 +67,7 @@ struct CheckInView: View {
                 // MAIN CONTENT
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.lg) {
+
                         // MARK: - Header
                         VStack(spacing: AppTheme.Spacing.xs) {
                             Text("Check-In")
@@ -68,11 +77,11 @@ struct CheckInView: View {
                         }
                         .padding(.top, 10)
 
-                        // MARK: - Reflection Type
+                        // MARK: - Reflection Type Picker
                         VStack(spacing: AppTheme.Spacing.sm) {
                             Text("Reflection Type")
                                 .appHeadline()
-                                .padding(.top, AppTheme.Spacing.md) // keeps title centered nicely
+                                .padding(.top, AppTheme.Spacing.md)
 
                             Picker("Reflection Type", selection: $reflectionType) {
                                 Text("Video").tag("video")
@@ -100,7 +109,7 @@ struct CheckInView: View {
                             }
                         }
 
-                        // MARK: - Notes Card
+                        // MARK: - Write your reflection
                         VStack(spacing: 0) {
                             HStack {
                                 Text("Write Your Reflection")
@@ -117,6 +126,29 @@ struct CheckInView: View {
                                 .padding(.top, AppTheme.Spacing.sm)
                                 .padding(.bottom, AppTheme.Spacing.md)
                                 .id("ReflectionEditor")
+
+                            // MARK: - Need Inspiration Button
+                            Button {
+                                Haptics.tap()
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                                    showPrompts.toggle()
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: "lightbulb.fill")
+                                    Text("Need Inspiration?")
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                }
+                                .font(.subheadline.bold())
+                                .padding()
+                                .frame(maxWidth: .infinity)
+                                .background(AppTheme.Colors.accent.opacity(0.1))
+                                .foregroundColor(AppTheme.Colors.accent)
+                                .cornerRadius(AppTheme.Radii.lg)
+                                .padding(.horizontal, AppTheme.Spacing.md)
+                                .padding(.bottom, AppTheme.Spacing.md)
+                            }
                         }
                         .background(
                             RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
@@ -129,6 +161,38 @@ struct CheckInView: View {
                         .shadow(color: .black.opacity(scheme == .dark ? 0.25 : 0.07),
                                 radius: 4, x: 0, y: 2)
                         .cardBackground(scheme)
+                        .sheet(isPresented: $showPrompts) {
+                            // MARK: - Inspiration Modal (Blur + Fade)
+                            ZStack {
+                                VisualEffectBlur(blurStyle: .systemUltraThinMaterial)
+                                    .ignoresSafeArea()
+                                    .overlay(
+                                        Color.black.opacity(0.25)
+                                            .ignoresSafeArea()
+                                            .transition(.opacity)
+                                    )
+
+                                ReflectionPromptView(
+                                    reflections: Array(reflections),
+                                    isPremium: isPremiumUser,
+                                    reflectionText: $reflectionText,
+                                    selectedMood: selectedMood   // ✅ Pass current mood to prompt engine
+                                )
+                                .onDisappear {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                                        proxy.scrollTo("ReflectionEditor", anchor: .bottom)
+                                    }
+                                }
+                                .padding(.top, 20)
+                                .padding(.horizontal, 12)
+                                .background(.ultraThinMaterial)
+                                .cornerRadius(AppTheme.Radii.xl)
+                                .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: -4)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showPrompts)
+                            }
+                        }
+
 
                         // MARK: - Save Button
                         Button(action: saveAndNotify) {
@@ -162,13 +226,12 @@ struct CheckInView: View {
 
             .onTapGesture { dismissKeyboard() }
 
-            // MARK: - Keyboard and Auto-scroll Behavior
+            // MARK: - Keyboard Behavior
             .onReceive(keyboardPublisher) { height in
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                     keyboardHeight = height
                     isTabBarHidden = height > 0
                     if height > 0 {
-                        // smooth scroll to reflection editor
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                                 proxy.scrollTo("ReflectionEditor", anchor: .bottom)
@@ -178,7 +241,7 @@ struct CheckInView: View {
                 }
             }
 
-            // MARK: - Sheets
+            // MARK: - Sheets for Recording
             .sheet(isPresented: $showVideoRecorder) {
                 VideoRecorder(videoURL: $videoURL)
             }
@@ -374,7 +437,7 @@ private struct InlineAudioPlayer: View {
     }
 }
 
-// MARK: - Success Banner View (Bubble)
+// MARK: - Success Banner View
 private struct SuccessBannerView: View {
     var message: String
     @Environment(\.colorScheme) private var scheme
@@ -412,3 +475,4 @@ private struct CardBGShim: ViewModifier {
                     radius: 4, x: 0, y: 2)
     }
 }
+

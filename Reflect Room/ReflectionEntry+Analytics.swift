@@ -24,11 +24,16 @@ extension ReflectionEntry {
     }
 
     // MARK: Current Streak
-    /// Calculates the number of consecutive days with reflections up to the latest entry.
+    /// Calculates the number of consecutive days with reflections, only counting if the latest is recent.
     static func currentStreak(from entries: [ReflectionEntry]) -> Int {
         let sorted = entries.compactMap { $0.timestamp }.sorted(by: >)
         guard let latest = sorted.first else { return 0 }
 
+        // If last reflection wasn’t today or yesterday, streak is 0
+        let daysSinceLast = Calendar.current.dateComponents([.day], from: latest, to: Date()).day ?? 0
+        guard daysSinceLast <= 1 else { return 0 }
+
+        // Count backwards through consecutive days
         var streak = 1
         var previous = latest
 
@@ -41,29 +46,36 @@ extension ReflectionEntry {
                 break
             }
         }
+
         return streak
     }
 
+
     // MARK: Longest Streak
-    /// Finds the longest chain of consecutive reflection days.
+    /// Finds the longest chain of consecutive reflection days (ignores multiple reflections per day).
     static func longestStreak(from entries: [ReflectionEntry]) -> Int {
-        let dates = entries.compactMap {
-            Calendar.current.startOfDay(for: $0.timestamp ?? Date())
-        }.sorted(by: <)
-        guard !dates.isEmpty else { return 0 }
+        // Get unique reflection days only
+        let calendar = Calendar.current
+        let uniqueDays = Set(entries.compactMap {
+            calendar.startOfDay(for: $0.timestamp ?? Date.distantPast)
+        })
+
+        let sortedDays = uniqueDays.sorted(by: <)
+        guard !sortedDays.isEmpty else { return 0 }
 
         var longest = 1
         var current = 1
 
-        for i in 1..<dates.count {
-            let diff = Calendar.current.dateComponents([.day], from: dates[i - 1], to: dates[i]).day ?? 0
+        for i in 1..<sortedDays.count {
+            let diff = calendar.dateComponents([.day], from: sortedDays[i - 1], to: sortedDays[i]).day ?? 0
             if diff == 1 {
                 current += 1
                 longest = max(longest, current)
-            } else if diff > 1 {
+            } else {
                 current = 1
             }
         }
+
         return longest
     }
 
