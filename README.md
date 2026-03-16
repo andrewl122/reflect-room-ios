@@ -37,11 +37,11 @@ Example format:
 ## How to Run
 
 1. Clone the repository
-   git clone https://github.com/andrewl122/ReflectRoom.git
+git clone https://github.com/andrewl122/ReflectRoom.git
 
-3. Open the project in **Xcode**
+2. Open the project in **Xcode**
 
-4. Run the app using an **iOS Simulator** or a physical device
+3. Run the app using an **iOS Simulator** or a physical device
 
 ## Future Improvements
 
@@ -52,6 +52,6 @@ Example format:
 
 ## Author
 
-Andrew Lawrence  
+**Andrew Lawrence**  
 Computer Information Systems Graduate  
 Focused on mobile application and software development
