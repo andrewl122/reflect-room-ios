@@ -12,28 +12,30 @@ import CoreData
 extension ReflectionEntry {
 
     // MARK: Mood Score Helper
-    static func moodScore(for mood: String) -> Double {
-        switch mood.lowercased() {
-        case "happy": return 5
-        case "okay": return 4
-        case "sad": return 3
-        case "anxious": return 2
-        case "angry": return 1
-        default: return 3 // neutral fallback
-        }
+    static func moodScore(for moodString: String) -> Double {
+        MoodType(storedValue: moodString)?.analyticsScore ?? MoodType.neutral.analyticsScore
     }
 
-    // MARK: Current Streak
-    /// Calculates the number of consecutive days with reflections, only counting if the latest is recent.
+    static func moodScore(for entry: ReflectionEntry) -> Double {
+        entry.moodType?.analyticsScore ?? MoodType.neutral.analyticsScore
+    }
+
+    /// Most frequent mood in the dataset (canonical raw values).
+    static func dominantMoodType(from entries: [ReflectionEntry]) -> MoodType? {
+        let types = entries.compactMap(\.moodType)
+        guard !types.isEmpty else { return nil }
+        let counts = Dictionary(grouping: types, by: { $0 }).mapValues(\.count)
+        return counts.max(by: { $0.value < $1.value })?.key
+    }
+
+    // MARK: - Current Streak
     static func currentStreak(from entries: [ReflectionEntry]) -> Int {
         let sorted = entries.compactMap { $0.timestamp }.sorted(by: >)
         guard let latest = sorted.first else { return 0 }
 
-        // If last reflection wasn’t today or yesterday, streak is 0
         let daysSinceLast = Calendar.current.dateComponents([.day], from: latest, to: Date()).day ?? 0
         guard daysSinceLast <= 1 else { return 0 }
 
-        // Count backwards through consecutive days
         var streak = 1
         var previous = latest
 
@@ -50,11 +52,8 @@ extension ReflectionEntry {
         return streak
     }
 
-
-    // MARK: Longest Streak
-    /// Finds the longest chain of consecutive reflection days (ignores multiple reflections per day).
+    // MARK: - Longest Streak
     static func longestStreak(from entries: [ReflectionEntry]) -> Int {
-        // Get unique reflection days only
         let calendar = Calendar.current
         let uniqueDays = Set(entries.compactMap {
             calendar.startOfDay(for: $0.timestamp ?? Date.distantPast)
@@ -75,12 +74,10 @@ extension ReflectionEntry {
                 current = 1
             }
         }
-
         return longest
     }
 
-    // MARK: Weekly Grouping
-    /// Groups reflections by week (Sunday–Saturday) for trend calculations.
+    // MARK: - Weekly Grouping
     static func weeklySummary(from entries: [ReflectionEntry]) -> [Date: [ReflectionEntry]] {
         var summary: [Date: [ReflectionEntry]] = [:]
         let calendar = Calendar.current
@@ -94,8 +91,7 @@ extension ReflectionEntry {
         return summary
     }
 
-    // MARK: Weekly Average
-    /// Calculates the current week’s average mood score.
+    // MARK: - Weekly Average Mood Score
     static func weeklyAverage(for entries: [ReflectionEntry]) -> Double {
         let calendar = Calendar.current
         guard let start = calendar.dateInterval(of: .weekOfYear, for: Date())?.start else { return 0 }
@@ -105,14 +101,12 @@ extension ReflectionEntry {
             return date >= start
         }
 
-        let scores = thisWeek.map { moodScore(for: $0.mood ?? "") }
+        let scores = thisWeek.map { moodScore(for: $0) }
         guard !scores.isEmpty else { return 0 }
-        return scores.reduce(0, +) / Double(scores.count)
+        return scores.average
     }
 
-    // MARK: Week-to-Week Comparison
-    /// Compares this week's average mood score to the previous week's.
-    /// Returns percentage change (e.g. +12.5 means improvement).
+    // MARK: - Week-to-Week Comparison
     static func compareWeekToLast(from entries: [ReflectionEntry]) -> Double {
         let calendar = Calendar.current
         guard
@@ -130,26 +124,26 @@ extension ReflectionEntry {
             return date >= lastWeekStart && date < thisWeekStart
         }
 
-        let thisAvg = thisWeek.map { moodScore(for: $0.mood ?? "") }.average
-        let lastAvg = lastWeek.map { moodScore(for: $0.mood ?? "") }.average
+        let thisAvg = thisWeek.map { moodScore(for: $0) }.average
+        let lastAvg = lastWeek.map { moodScore(for: $0) }.average
 
         guard lastAvg > 0 else { return 0 }
         return ((thisAvg - lastAvg) / lastAvg) * 100
     }
 
-    // MARK: Insights Summary (for future ReflectionPromptEngine)
-    /// Returns high-level summary data for reflection analysis or AI prompt generation.
+    // MARK: - Insights Summary
     static func insightsSummary(from entries: [ReflectionEntry]) -> [String: Any] {
-        let sorted = entries.sorted(by: { ($0.timestamp ?? .distantPast) > ($1.timestamp ?? .distantPast) })
+        let sorted = entries.sorted(by: {
+            ($0.timestamp ?? .distantPast) > ($1.timestamp ?? .distantPast)
+        })
+
         guard !sorted.isEmpty else { return [:] }
 
         let latest = sorted.first
-        let scores = sorted.map { moodScore(for: $0.mood ?? "") }
+        let scores = sorted.map { moodScore(for: $0) }
         let avg = scores.average
 
-        // Find dominant mood
-        let moods = sorted.map { $0.mood ?? "unknown" }
-        let dominantMood = moods.mostFrequent() ?? "unknown"
+        let dominantMood = dominantMoodType(from: entries)?.storageValue ?? "unknown"
 
         return [
             "dominantMood": dominantMood,
@@ -171,10 +165,3 @@ fileprivate extension Array where Element == Double {
     }
 }
 
-fileprivate extension Array where Element == String {
-    func mostFrequent() -> String? {
-        guard !isEmpty else { return nil }
-        let counts = Dictionary(grouping: self, by: { $0 }).mapValues { $0.count }
-        return counts.max(by: { $0.value < $1.value })?.key
-    }
-}

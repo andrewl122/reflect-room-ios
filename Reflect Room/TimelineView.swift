@@ -160,11 +160,11 @@ private struct ReflectionCard: View {
 
     var body: some View {
         HStack(spacing: AppTheme.Spacing.md) {
-            Text(moodEmoji(for: entry.mood ?? ""))
+            Text(entry.moodDisplayIcon)
                 .font(.largeTitle)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(entry.mood ?? "Unknown Mood")
+                Text(entry.moodDisplayTitle)
                     .appHeadline()
                 Text(entry.timestamp ?? Date(), style: .date)
                     .subtleLabel()
@@ -181,16 +181,6 @@ private struct ReflectionCard: View {
         )
     }
 
-    private func moodEmoji(for mood: String) -> String {
-        switch mood.lowercased() {
-        case "happy": return "😊"
-        case "sad": return "😢"
-        case "okay": return "😐"
-        case "angry": return "😠"
-        case "anxious": return "😰"
-        default: return "🪞"
-        }
-    }
 }
 
 // MARK: - Subtle Blur Background for Sticky Headers

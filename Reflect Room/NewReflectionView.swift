@@ -12,10 +12,9 @@ struct NewReflectionView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.colorScheme) private var scheme
 
-    // If you have real subscription logic, replace this with your actual flag.
     @State private var isPremiumUser: Bool = false
 
-    // MARK: - Core Data (for insights / prompts context)
+    // MARK: - Fetch Reflections (for prompt engine context)
     @FetchRequest(
         sortDescriptors: [NSSortDescriptor(keyPath: \ReflectionEntry.timestamp, ascending: false)],
         animation: .default
@@ -23,7 +22,7 @@ struct NewReflectionView: View {
     private var reflections: FetchedResults<ReflectionEntry>
 
     // MARK: - UI State
-    @State private var mood: String? = nil
+    @State private var selectedMood: MoodType? = nil
     @State private var reflectionText: String = ""
     @State private var showPrompts: Bool = false
 
@@ -32,28 +31,31 @@ struct NewReflectionView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.lg) {
 
-                // MARK: - Title
+                // MARK: Title
                 Text("New Reflection")
                     .appHeadline()
                     .foregroundColor(AppTheme.Colors.accent)
                     .padding(.top)
 
-                // MARK: - Mood Selector
+                // MARK: Mood Selector
                 VStack(alignment: .leading, spacing: 10) {
                     Text("How are you feeling?")
                         .font(.subheadline)
                         .foregroundColor(AppTheme.Colors.textSecondary)
 
-                    HStack(spacing: AppTheme.Spacing.sm) {
-                        moodButton(emoji: "😊", moodLabel: "Happy")
-                        moodButton(emoji: "😐", moodLabel: "Okay")
-                        moodButton(emoji: "😢", moodLabel: "Sad")
-                        moodButton(emoji: "😰", moodLabel: "Anxious")
-                        moodButton(emoji: "😠", moodLabel: "Angry")
+                    // 3 columns mood grid
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible()), count: 3),
+                        spacing: 14
+                    ) {
+                        ForEach(MoodType.allCases, id: \.self) { mood in
+                            moodButton(for: mood)
+                        }
                     }
+                    .padding(.top, 4)
                 }
 
-                // MARK: - Text Editor
+                // MARK: Reflection Text
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Your Thoughts")
                         .font(.subheadline)
@@ -76,7 +78,7 @@ struct NewReflectionView: View {
                     }
                 }
 
-                // MARK: - Need Inspiration
+                // MARK: Need Inspiration?
                 VStack(alignment: .leading, spacing: 12) {
                     Button {
                         Haptics.tap()
@@ -99,7 +101,6 @@ struct NewReflectionView: View {
                     }
 
                     if showPrompts {
-                        // ✅ Pass the binding for autofill
                         ReflectionPromptView(
                             reflections: Array(reflections),
                             isPremium: isPremiumUser,
@@ -110,10 +111,8 @@ struct NewReflectionView: View {
                     }
                 }
 
-                // MARK: - Save Button
-                Button {
-                    saveReflection()
-                } label: {
+                // MARK: Save Button
+                Button(action: saveReflection) {
                     Text("Save Reflection")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
@@ -133,18 +132,27 @@ struct NewReflectionView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    // MARK: - Mood Button Builder
-    private func moodButton(emoji: String, moodLabel: String) -> some View {
+    // MARK: - Mood Button Builder (Hybrid Emoji)
+    private func moodButton(for mood: MoodType) -> some View {
         Button {
             Haptics.tap()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                mood = moodLabel
+                selectedMood = mood
             }
         } label: {
-            Text(emoji)
-                .font(.largeTitle)
-                .opacity(mood == moodLabel ? 1.0 : 0.45)
-                .scaleEffect(mood == moodLabel ? 1.12 : 1.0)
+            VStack(spacing: 4) {
+                Text(mood.icon)
+                    .font(.system(size: 40))
+                    .padding(12)
+                    .background(mood.color.opacity(0.35))
+                    .clipShape(Circle())
+                    .opacity(selectedMood == mood ? 1.0 : 0.5)
+                    .scaleEffect(selectedMood == mood ? 1.12 : 1.0)
+
+                Text(mood.title)
+                    .font(.caption)
+                    .foregroundColor(.black)
+            }
         }
         .buttonStyle(.plain)
     }
@@ -158,13 +166,15 @@ struct NewReflectionView: View {
         entry.id = UUID()
         entry.timestamp = Date()
         entry.text = trimmed
-        entry.mood = mood ?? "Unknown"
+
+        // Save using MoodType rawValue
+        entry.mood = selectedMood?.storageValue ?? MoodType.neutral.storageValue
 
         do {
             try viewContext.save()
             Haptics.success()
             reflectionText = ""
-            mood = nil
+            selectedMood = nil
         } catch {
             print("❌ Failed to save reflection: \(error.localizedDescription)")
         }

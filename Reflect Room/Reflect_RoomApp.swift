@@ -17,7 +17,9 @@ struct ReflectRoomApp: App {
         WindowGroup {
             Group {
                 if isLoading {
+                    // Show loading with access to Core Data if needed later
                     LoadingView()
+                        .environment(\.managedObjectContext, persistenceController.container.viewContext)
                         .transition(.opacity)
                 } else {
                     HomeView()
@@ -25,6 +27,8 @@ struct ReflectRoomApp: App {
                         .transition(.opacity)
                 }
             }
+            // 🚫 Force Light Mode Everywhere
+            .preferredColorScheme(.light)
             .onAppear {
                 // Simulated loading time
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2) {

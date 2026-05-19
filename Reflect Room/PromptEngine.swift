@@ -19,7 +19,7 @@ struct PromptEngine {
     
     /// Generates reflection prompts based on user data and selected mood.
     static func generatePrompts(from insights: [String: Any],
-                                selectedMood: String?,
+                                selectedMood: MoodType?,
                                 mode: PromptMode,
                                 completion: @escaping ([PromptSection]) -> Void) {
         switch mode {
@@ -30,6 +30,19 @@ struct PromptEngine {
         case .aiBedrock:
             generateAIprompts_Bedrock(from: insights, selectedMood: selectedMood, completion: completion)
         }
+    }
+
+    /// String-backed entry point for call sites still passing persisted mood values.
+    static func generatePrompts(from insights: [String: Any],
+                                selectedMood storedMood: String?,
+                                mode: PromptMode,
+                                completion: @escaping ([PromptSection]) -> Void) {
+        generatePrompts(
+            from: insights,
+            selectedMood: MoodType(storedValue: storedMood),
+            mode: mode,
+            completion: completion
+        )
     }
 }
 
@@ -43,7 +56,7 @@ struct PromptSection: Identifiable {
 // MARK: - 1️⃣ Local Prompt Logic (Free Tier)
 extension PromptEngine {
     
-    private static func localPromptSections(from insights: [String: Any], selectedMood: String?) -> [PromptSection] {
+    private static func localPromptSections(from insights: [String: Any], selectedMood: MoodType?) -> [PromptSection] {
         var sections: [PromptSection] = []
         
         // --- Mood-Based Section
@@ -67,12 +80,15 @@ extension PromptEngine {
         return sections
     }
     
-    // MARK: Mood-Specific Prompts (20 Each)
-    private static func moodSpecificPrompts(for mood: String?) -> [String] {
-        guard let mood = mood?.lowercased() else { return generalReflectionPrompts() }
-        
+    // MARK: Mood-Specific Prompts
+    private static func moodSpecificPrompts(for mood: MoodType?) -> [String] {
+        guard let mood else { return generalReflectionPrompts() }
+        return moodSpecificPrompts(for: mood)
+    }
+
+    private static func moodSpecificPrompts(for mood: MoodType) -> [String] {
         switch mood {
-        case "happy":
+        case .happy:
             return [
                 "What has been bringing you joy lately?",
                 "How can you hold onto this sense of happiness?",
@@ -96,7 +112,7 @@ extension PromptEngine {
                 "What are you excited about right now?"
             ]
             
-        case "sad":
+        case .sad:
             return [
                 "What has been weighing on your heart?",
                 "Who can you turn to for comfort?",
@@ -120,7 +136,7 @@ extension PromptEngine {
                 "How can you show yourself love right now?"
             ]
             
-        case "anxious":
+        case .anxious:
             return [
                 "What’s been making you feel uneasy lately?",
                 "What helps calm your mind when you feel tense?",
@@ -144,7 +160,7 @@ extension PromptEngine {
                 "What feels safe in your world right now?"
             ]
             
-        case "angry":
+        case .stressed:
             return [
                 "What triggered your frustration today?",
                 "What is your anger protecting you from?",
@@ -168,9 +184,101 @@ extension PromptEngine {
                 "How can you move from frustration toward understanding?"
             ]
             
-        default:
-            return generalReflectionPrompts()
+        case .neutral:
+            return neutralPrompts()
+
+        case .peaceful:
+            return peacefulPrompts()
+
+        case .grateful:
+            return gratefulPrompts()
+
+        case .reflective:
+            return reflectivePrompts()
+
+        case .tired:
+            return tiredPrompts()
         }
+    }
+
+    private static func neutralPrompts() -> [String] {
+        moodSpecificPromptsLegacyOkay()
+    }
+
+    /// Prompts previously keyed as "okay" — used for `.neutral`.
+    private static func moodSpecificPromptsLegacyOkay() -> [String] {
+        [
+            "You’ve been steady lately — what’s keeping you grounded?",
+            "What would make today feel just a bit better?",
+            "What small win can you acknowledge right now?",
+            "What does balance look like for you today?",
+            "What habit supports your calm?",
+            "What are you learning about your needs?",
+            "What moment felt quietly good recently?",
+            "What boundary would help you feel steadier?",
+            "What are you carrying that you can set down?",
+            "What would self-support look like today?"
+        ]
+    }
+
+    private static func peacefulPrompts() -> [String] {
+        [
+            "What helped you feel calm recently?",
+            "Where do you notice ease in your body right now?",
+            "What environment helps you feel at peace?",
+            "What can you protect to keep this calm?",
+            "What would a gentle day look like?",
+            "What are you grateful for in this stillness?",
+            "What thought can you release to stay soft?",
+            "Who or what helps you feel safe?",
+            "What ritual brings you back to center?",
+            "How can you carry this peace into tomorrow?"
+        ]
+    }
+
+    private static func gratefulPrompts() -> [String] {
+        [
+            "What are you thankful for today?",
+            "Who made a positive difference for you recently?",
+            "What small gift did you almost overlook?",
+            "What strength in yourself are you grateful for?",
+            "What memory brings warmth when you recall it?",
+            "What privilege or support can you acknowledge?",
+            "What lesson are you grateful to have learned?",
+            "What beauty did you notice today?",
+            "How can you express appreciation to someone?",
+            "What part of your life feels rich right now?"
+        ]
+    }
+
+    private static func reflectivePrompts() -> [String] {
+        [
+            "What question is your mind returning to?",
+            "What pattern are you noticing in yourself?",
+            "What truth are you ready to admit?",
+            "What would your future self thank you for exploring?",
+            "What belief might be ready to change?",
+            "What are you curious about right now?",
+            "What decision deserves more honesty?",
+            "What story about yourself are you rewriting?",
+            "What emotion is asking for attention?",
+            "What insight wants to surface if you slow down?"
+        ]
+    }
+
+    private static func tiredPrompts() -> [String] {
+        [
+            "What has been draining your energy?",
+            "What would real rest look like today?",
+            "What can you postpone without guilt?",
+            "What is one kind thing your body needs?",
+            "What helped you recover before?",
+            "What expectation can you loosen?",
+            "What would make tonight feel softer?",
+            "What are you proud of despite being tired?",
+            "Who can support you while you recharge?",
+            "What is one small step, not one big push?"
+        ]
     }
     
     // MARK: Default Reflection Pool (20 Prompts)
@@ -205,10 +313,10 @@ extension PromptEngine {
 //
 extension PromptEngine {
     private static func generateAIprompts_OpenAI(from insights: [String: Any],
-                                                 selectedMood: String?,
+                                                 selectedMood: MoodType?,
                                                  completion: @escaping ([PromptSection]) -> Void) {
         let summary = insightsSummaryText(insights)
-        let moodText = selectedMood != nil ? "Current mood: \(selectedMood!). " : ""
+        let moodText = selectedMood.map { "Current mood: \($0.title). " } ?? ""
         
         let systemPrompt = """
         You are Reflect Room, a warm and thoughtful reflection companion.
@@ -274,7 +382,7 @@ extension PromptEngine {
 //
 extension PromptEngine {
     private static func generateAIprompts_Bedrock(from insights: [String: Any],
-                                                  selectedMood: String?,
+                                                  selectedMood: MoodType?,
                                                   completion: @escaping ([PromptSection]) -> Void) {
         let sections = [
             PromptSection(title: "Based on your mood selection", prompts: [

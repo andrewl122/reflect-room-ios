@@ -17,7 +17,7 @@ struct DetailedStatsView: View {
     // MARK: - Computed Properties
 
     private var avgMood: Double {
-        let scores = reflections.map { ReflectionEntry.moodScore(for: $0.mood ?? "") }
+        let scores = reflections.map { ReflectionEntry.moodScore(for: $0) }
         return scores.isEmpty ? 0 : scores.reduce(0, +) / Double(scores.count)
     }
 
@@ -26,14 +26,19 @@ struct DetailedStatsView: View {
             guard let date = $0.timestamp else { return false }
             return date >= Calendar.current.date(byAdding: .day, value: -7, to: Date())!
         }
-        let scores = last7.map { ReflectionEntry.moodScore(for: $0.mood ?? "") }
+        let scores = last7.map { ReflectionEntry.moodScore(for: $0) }
         return scores.isEmpty ? 0 : scores.reduce(0, +) / Double(scores.count)
     }
 
     private var reflectionCount: Int { reflections.count }
 
-    private var dominantMood: String {
-        reflections.map { $0.mood ?? "" }.mostFrequent() ?? "None"
+    private var dominantMood: MoodType? {
+        ReflectionEntry.dominantMoodType(from: reflections)
+    }
+
+    private var dominantMoodLabel: String {
+        guard let dominantMood else { return "🪞 None" }
+        return "\(dominantMood.icon) \(dominantMood.title)"
     }
 
     private var currentStreak: Int {
@@ -112,7 +117,7 @@ struct DetailedStatsView: View {
 
                     // MARK: - Title
                     VStack(spacing: 6) {
-                        Text(emojiForMood(dominantMood))
+                        Text(dominantMood?.icon ?? "🪞")
                             .font(.system(size: 56))
                             .shadow(radius: 4)
                         Text("Your Reflection Stats")
@@ -153,7 +158,7 @@ struct DetailedStatsView: View {
                         statCard(title: "Reflections",
                                  value: "\(reflectionCount)")
                         statCard(title: "Dominant Mood",
-                                 value: "\(emojiForMood(dominantMood)) \(dominantMood)")
+                                 value: dominantMoodLabel)
                         statCard(title: "Current Streak",
                                  value: "\(currentStreak) days")
                         statCard(title: "Longest Streak",
@@ -190,21 +195,11 @@ struct DetailedStatsView: View {
                             .alert("Mood Score Scale", isPresented: $showInfo) {
                                 Button("Got it", role: .cancel) { }
                             } message: {
-                                Text("""
-                                Each mood is converted into a 1–5 numeric value:
-
-                                😊 Happy = 5
-                                😐 Okay = 4
-                                😢 Sad = 3
-                                😰 Anxious = 2
-                                😠 Angry = 1
-
-                                Your averages represent the mean of these scores based on your recorded reflections.
-                                """)
+                                Text(MoodType.analyticsScoreLegend)
                             }
                         }
 
-                        Text("Your mood averages are calculated using a 1–5 scale (Angry–Happy).")
+                        Text("Your mood averages use the 9-mood score scale above.")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -310,27 +305,4 @@ struct DetailedStatsView: View {
         )
     }
 
-    // MARK: - Mood Emoji Helper
-
-    private func emojiForMood(_ mood: String) -> String {
-        switch mood.lowercased() {
-        case "happy": return "😊"
-        case "okay": return "😐"
-        case "sad": return "😢"
-        case "anxious": return "😰"
-        case "angry": return "😠"
-        case "none", "": return "🪞"
-        default: return "🪞"
-        }
-    }
-}
-
-// MARK: - Helper Extension
-
-fileprivate extension Array where Element == String {
-    func mostFrequent() -> String? {
-        guard !isEmpty else { return nil }
-        let counts = Dictionary(grouping: self, by: { $0 }).mapValues { $0.count }
-        return counts.max(by: { $0.value < $1.value })?.key
-    }
 }

@@ -120,17 +120,7 @@ struct MoodInsightsView: View {
                             .alert("How It's Calculated", isPresented: $showMoodInfo) {
                                 Button("Got it", role: .cancel) { }
                             } message: {
-                                Text("""
-                                Your mood average is based on all reflections recorded within the selected period.
-
-                                😊 Happy = 5  
-                                😐 Okay = 4  
-                                😢 Sad = 3  
-                                😰 Anxious = 2  
-                                😠 Angry = 1
-
-                                The app averages these scores to show your overall mood trend.
-                                """)
+                                Text(MoodType.analyticsScoreLegend)
                             }
                         }
 
@@ -194,10 +184,10 @@ struct MoodInsightsView: View {
                         } else {
                             Chart(distro, id: \.mood) { stat in
                                 BarMark(
-                                    x: .value("Mood", stat.mood),
+                                    x: .value("Mood", stat.mood.title),
                                     y: .value("Count", stat.count)
                                 )
-                                .foregroundStyle(colorForMood(stat.mood))
+                                .foregroundStyle(stat.mood.color)
                                 .cornerRadius(6)
                             }
                             .frame(height: 180)
@@ -280,16 +270,15 @@ struct MoodInsightsView: View {
         return filtered.isEmpty ? 0 : total / Double(filtered.count)
     }
 
-    private func moodDistribution(for range: TimeRange) -> [(mood: String, count: Int)] {
-        let moods = ["Happy", "Okay", "Sad", "Anxious", "Angry"]
+    private func moodDistribution(for range: TimeRange) -> [(mood: MoodType, count: Int)] {
         let (start, end) = dateRange(for: range)
         let inRange = reflections.filter { entry in
             guard let d = entry.timestamp else { return false }
             return d >= start && d <= end
         }
-        return moods.compactMap { mood in
-            let c = inRange.filter { $0.mood == mood }.count
-            return c > 0 ? (mood, c) : nil
+        return MoodType.allCases.compactMap { mood in
+            let count = inRange.filter { $0.moodType == mood }.count
+            return count > 0 ? (mood: mood, count: count) : nil
         }
     }
 
@@ -303,7 +292,7 @@ struct MoodInsightsView: View {
             Calendar.current.startOfDay(for: $0.timestamp ?? Date())
         }
         return grouped.map { (date, entries) in
-            let scores = entries.map { ReflectionEntry.moodScore(for: $0.mood ?? "") }
+            let scores = entries.map { ReflectionEntry.moodScore(for: $0) }
             let avg = scores.reduce(0, +) / Double(scores.count)
             return MoodTrend(date: date, averageScore: avg)
         }
@@ -363,21 +352,11 @@ struct MoodInsightsView: View {
             if let d = $0.timestamp { return d >= start && d < end }
             return false
         }
-        let scores = previousData.map { ReflectionEntry.moodScore(for: $0.mood ?? "") }
+        let scores = previousData.map { ReflectionEntry.moodScore(for: $0) }
         let total  = scores.reduce(0.0, +)
         return scores.isEmpty ? 0 : total / Double(scores.count)
     }
 
-    private func colorForMood(_ mood: String) -> Color {
-        switch mood.lowercased() {
-        case "happy":  return .yellow
-        case "okay":   return .gray
-        case "sad":    return .blue
-        case "anxious":return .orange
-        case "angry":  return .red
-        default:       return AppTheme.Colors.accent
-        }
-    }
 }
 
 // MARK: - TimeRange Label Description

@@ -2,7 +2,7 @@
 //  CheckInView.swift
 //  Reflect Room
 //
-//  Created by Andrew Lawrence on 10/30/25.
+//  Updated by Ace (ChatGPT) — MoodType Edition + UI Polishes
 //
 
 import SwiftUI
@@ -17,7 +17,11 @@ struct CheckInView: View {
     @Environment(\.colorScheme) private var scheme
     @Binding var isTabBarHidden: Bool
 
-    var selectedMood: String
+    let mood: MoodType   // ⭐️ Updated — now strongly typed!
+
+    // MARK: - AppStorage banner
+    @AppStorage("lastMoodBannerMessage") private var lastMoodBannerMessage: String = ""
+    @AppStorage("lastMoodType") private var lastMoodTypeRaw: String = ""
 
     // MARK: - Video
     @State private var showVideoRecorder = false
@@ -39,13 +43,6 @@ struct CheckInView: View {
     @State private var showPrompts = false
     @State private var isPremiumUser = false
 
-    // MARK: - Reflections Fetch
-    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \ReflectionEntry.timestamp, ascending: false)])
-    private var reflections: FetchedResults<ReflectionEntry>
-
-    // MARK: - Feedback
-    @State private var showSuccessBanner = false
-
     // MARK: - Keyboard Handling
     @State private var keyboardHeight: CGFloat = 0
     private var keyboardPublisher: AnyPublisher<CGFloat, Never> {
@@ -59,79 +56,28 @@ struct CheckInView: View {
         .eraseToAnyPublisher()
     }
 
-    // MARK: - Dynamic Mood Caption (No Emoji)
+    // MARK: - Mood Caption (recommended option)
     private var moodCaption: String {
-        switch selectedMood.lowercased() {
-        case "happy":
+        switch mood {
+        case .happy:
             return "Tap to capture what’s bringing you joy today."
-        case "sad":
-            return "Tap for gentle prompts to help you process your feelings."
-        case "anxious":
-            return "Tap for calming questions to ease your thoughts."
-        case "okay":
-            return "Tap to reflect on the small wins and steady moments."
-        case "grateful":
+        case .peaceful:
+            return "Tap to ground your calm and ease."
+        case .grateful:
             return "Tap to explore gratitude and appreciation."
-        case "tired":
-            return "Tap to reflect and recharge your mental energy."
-        default:
-            return "Tap to see guided prompts tailored to your mood."
+        case .neutral:
+            return "Tap to reflect on simple, steady moments."
+        case .reflective:
+            return "Tap to explore your thoughts more deeply."
+        case .sad:
+            return "Tap for gentle prompts to help you process your feelings."
+        case .stressed:
+            return "Tap for grounding prompts to reduce tension."
+        case .anxious:
+            return "Tap for calming questions to ease your thoughts."
+        case .tired:
+            return "Tap to recharge your mental and emotional energy."
         }
-    }
-    // MARK: - Mood Reflection Quote (Integrated from lastMoodMessage)
-    private var moodReflectionQuote: String {
-        let messages: [String]
-
-        switch selectedMood.lowercased() {
-        case "happy":
-            messages = [
-                "You’ve been radiating good energy lately — keep leaning into that joy.",
-                "Your reflections show gratitude and light — beautiful work staying positive.",
-                "You seem to be in a great rhythm lately. Savor those little wins.",
-                "Your last entry felt peaceful — sounds like your spirit’s in a good place.",
-                "You’ve been finding joy in the small things. That’s powerful self-care."
-            ]
-        case "okay":
-            messages = [
-                "You’re holding steady — sometimes balance is the best place to be.",
-                "Your recent reflections show calm and clarity. Keep that grounded energy.",
-                "Even ‘okay’ days matter — they remind you of your progress.",
-                "You’ve been consistent and thoughtful — that stability pays off.",
-                "Not every day is fireworks, and that’s okay. Steady feels safe."
-            ]
-        case "sad":
-            messages = [
-                "Your last reflection carried some weight. Give yourself space to heal.",
-                "You’ve been processing something deep — it’s okay to slow down.",
-                "Sad moments show you what matters most. Let them move through gently.",
-                "Your heart sounded heavy last time. Remember: reflection itself is healing.",
-                "You’ve been brave enough to feel — that’s strength, not weakness."
-            ]
-        case "anxious":
-            messages = [
-                "Your recent reflections showed tension — maybe take a slow breath before you write.",
-                "You’ve been carrying a lot in your mind. Let today’s check-in help release it.",
-                "Your thoughts seemed restless lately — grounding yourself here can help.",
-                "You’ve been in your head a lot lately. Let’s bring you back to calm.",
-                "Your reflections reveal awareness — that’s the first step toward peace."
-            ]
-        case "angry":
-            messages = [
-                "You’ve had fire in your words recently — reflection helps you channel it constructively.",
-                "Your emotions have been intense. Use this space to transform them into clarity.",
-                "You’ve been feeling that spark of frustration — let’s turn it into focus.",
-                "You’ve been processing anger lately — journaling can cool the storm.",
-                "Your last reflection carried heat. Let’s redirect that energy into healing."
-            ]
-        default:
-            messages = [
-                "Tap your mood below to begin your next reflection.",
-                "Each reflection brings a new layer of awareness.",
-                "Every moment you pause to reflect builds self-understanding."
-            ]
-        }
-
-        return messages.randomElement() ?? "Take a moment to reflect on how you feel."
     }
 
     // MARK: - Body
@@ -143,11 +89,11 @@ struct CheckInView: View {
                 ScrollView {
                     VStack(spacing: AppTheme.Spacing.lg) {
 
-                        // MARK: - Header
-                        VStack(spacing: AppTheme.Spacing.xs) {
+                        // MARK: Header
+                        VStack(spacing: AppTheme.Spacing.sm) {
                             Text("Check-In")
                                 .appTitle()
-                            Text(moodReflectionQuote)
+                            Text("Take a moment to express how you're feeling.")
                                 .font(.subheadline)
                                 .foregroundColor(AppTheme.Colors.textSecondary)
                                 .multilineTextAlignment(.center)
@@ -155,7 +101,7 @@ struct CheckInView: View {
                         }
                         .padding(.top, 10)
 
-                        // MARK: - Reflection Type Picker
+                        // MARK: Reflection Type Picker
                         VStack(spacing: AppTheme.Spacing.sm) {
                             Text("Reflection Type")
                                 .appHeadline()
@@ -171,7 +117,7 @@ struct CheckInView: View {
                         }
                         .cardBackground(scheme)
 
-                        // MARK: - Need Inspiration Card (Dynamic Mood, No Emoji)
+                        // MARK: Inspiration Card
                         VStack(spacing: 6) {
                             Button {
                                 Haptics.tap()
@@ -192,23 +138,12 @@ struct CheckInView: View {
                                         .foregroundColor(AppTheme.Colors.accent)
                                 }
                                 .padding()
-                                .frame(maxWidth: .infinity)
                                 .background(
                                     RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
                                         .fill(AppTheme.Colors.cardBg(scheme))
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
-                                                .stroke(AppTheme.Colors.accent.opacity(0.15), lineWidth: 1)
-                                        )
-                                        .shadow(color: .black.opacity(scheme == .dark ? 0.3 : 0.08),
-                                                radius: 4, x: 0, y: 2)
                                 )
-                                .scaleEffect(showPrompts ? 0.97 : 1.0)
-                                .animation(.easeInOut(duration: 0.2), value: showPrompts)
                             }
-                            .buttonStyle(.plain)
 
-                            // Dynamic caption text (no emoji)
                             Text(moodCaption)
                                 .font(.caption)
                                 .foregroundColor(AppTheme.Colors.textSecondary)
@@ -216,10 +151,8 @@ struct CheckInView: View {
                                 .padding(.horizontal, 10)
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, AppTheme.Spacing.sm)
 
-
-                        // MARK: - Reflection Type Sections
+                        // MARK: Reflection Type Sections
                         Group {
                             if reflectionType == "video" {
                                 videoSection
@@ -230,74 +163,58 @@ struct CheckInView: View {
                                     onRecord: { showAudioRecorder = true }
                                 )
                                 .cardBackground(scheme)
-                            } else {
-                                EmptyView()
                             }
                         }
 
-                        // MARK: - Write your reflection
+                        // MARK: Write Reflection
                         VStack(spacing: 0) {
                             HStack {
                                 Text("Write Your Reflection")
                                     .appHeadline()
                                 Spacer()
                             }
-                            .padding(.horizontal, AppTheme.Spacing.md)
-                            .padding(.top, AppTheme.Spacing.md)
+                            .padding(.horizontal)
 
-                            TextEditor(text: $reflectionText)
-                                .scrollContentBackground(.hidden)
-                                .frame(minHeight: 170)
-                                .padding(.horizontal, AppTheme.Spacing.md)
-                                .padding(.top, AppTheme.Spacing.sm)
-                                .padding(.bottom, AppTheme.Spacing.md)
-                                .id("ReflectionEditor")
-                        }
-                        .background(
-                            RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
-                                .fill(AppTheme.Colors.cardBg(scheme))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
-                                .stroke(AppTheme.Colors.accent.opacity(0.12), lineWidth: 1)
-                        )
-                        .shadow(color: .black.opacity(scheme == .dark ? 0.25 : 0.07),
-                                radius: 4, x: 0, y: 2)
-                        .cardBackground(scheme)
-                        .sheet(isPresented: $showPrompts) {
-                            // MARK: - Inspiration Modal (Blur + Fade)
-                            ZStack {
-                                VisualEffectBlur(blurStyle: .systemUltraThinMaterial)
-                                    .ignoresSafeArea()
-                                    .overlay(
-                                        Color.black.opacity(0.25)
-                                            .ignoresSafeArea()
-                                            .transition(.opacity)
-                                    )
+                            ZStack(alignment: .topLeading) {
+                                TextEditor(text: $reflectionText)
+                                    .scrollContentBackground(.hidden)
+                                    .frame(minHeight: 170)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 8)
+                                    .background(Color.clear)
 
-                                ReflectionPromptView(
-                                    reflections: Array(reflections),
-                                    isPremium: isPremiumUser,
-                                    reflectionText: $reflectionText,
-                                    selectedMood: selectedMood
-                                )
-                                .onDisappear {
-                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                                        proxy.scrollTo("ReflectionEditor", anchor: .bottom)
-                                    }
+                                if reflectionText.isEmpty {
+                                    Text("Start typing...")
+                                        .foregroundColor(.secondary)
+                                        .padding(.top, 12)   // ⭐️ fixes spacing
+                                        .padding(.leading, 10)
                                 }
-                                .padding(.top, 20)
-                                .padding(.horizontal, 12)
-                                .background(.ultraThinMaterial)
-                                .cornerRadius(AppTheme.Radii.xl)
-                                .shadow(color: .black.opacity(0.25), radius: 20, x: 0, y: -4)
-                                .transition(.move(edge: .bottom).combined(with: .opacity))
-                                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: showPrompts)
                             }
+                            .frame(maxHeight: .infinity)
+                            .padding(.bottom, AppTheme.Spacing.md)
+                        }
+                        .cardBackground(scheme)
+                        .onTapGesture {
+                            UIApplication.shared.sendAction(
+                                #selector(UIResponder.resignFirstResponder),
+                                to: nil,
+                                from: nil,
+                                for: nil
+                            )
                         }
 
-                        // MARK: - Save Button
-                        Button(action: saveAndNotify) {
+                        // MARK: Prompts Sheet
+                        .sheet(isPresented: $showPrompts) {
+                            ReflectionPromptView(
+                                reflections: fetchReflections(),
+                                isPremium: isPremiumUser,
+                                reflectionText: $reflectionText,
+                                selectedMood: mood
+                            )
+                        }
+
+                        // MARK: Save Button
+                        Button(action: saveReflection) {
                             HStack {
                                 Image(systemName: "checkmark.circle.fill")
                                 Text("Save Entry").bold()
@@ -305,60 +222,40 @@ struct CheckInView: View {
                             .padding()
                             .frame(maxWidth: .infinity)
                             .background(AppTheme.Colors.successSoft)
-                            .foregroundColor(AppTheme.Colors.textPrimary)
                             .cornerRadius(AppTheme.Radii.lg)
                         }
+                        .padding(.top)
                     }
                     .padding(.horizontal)
                     .padding(.bottom, keyboardHeight > 0 ? keyboardHeight + 24 : 60)
                 }
-                .scrollIndicators(.hidden)
             }
 
-            // MARK: - Success Banner
-            .safeAreaInset(edge: .top) {
-                if showSuccessBanner {
-                    SuccessBannerView(message: "Reflection Saved — Keep it up!")
-                        .padding(.horizontal)
-                        .padding(.top, 6)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
-                        .animation(.easeInOut(duration: 0.3), value: showSuccessBanner)
-                }
-            }
-
-            .onTapGesture { dismissKeyboard() }
-
-            // MARK: - Keyboard Behavior
+            // MARK: Keyboard Handling
             .onReceive(keyboardPublisher) { height in
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.85)) {
                     keyboardHeight = height
                     isTabBarHidden = height > 0
-                    if height > 0 {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                                proxy.scrollTo("ReflectionEditor", anchor: .bottom)
-                            }
-                        }
-                    }
                 }
             }
 
-            // MARK: - Sheets for Recording
+            // MARK: Recording Sheets
             .sheet(isPresented: $showVideoRecorder) {
                 VideoRecorder(videoURL: $videoURL)
             }
-            .sheet(isPresented: $showAudioRecorder, onDismiss: {
-                if let url = pendingAudioURL {
-                    tempAudioURL = url
-                    pendingAudioURL = nil
-                    print("✅ Audio ready for preview: \(url.lastPathComponent)")
-                }
-            }) {
+            .sheet(isPresented: $showAudioRecorder) {
                 AudioRecorderView(tempAudioURL: $pendingAudioURL) { savedURL in
                     pendingAudioURL = savedURL
                 }
             }
         }
+    }
+
+    // MARK: - Fetch Helper
+    private func fetchReflections() -> [ReflectionEntry] {
+        let fetchRequest: NSFetchRequest<ReflectionEntry> = ReflectionEntry.fetchRequest()
+        fetchRequest.sortDescriptors = [NSSortDescriptor(keyPath: \ReflectionEntry.timestamp, ascending: false)]
+        return (try? viewContext.fetch(fetchRequest)) ?? []
     }
 
     // MARK: - Video Section
@@ -368,8 +265,6 @@ struct CheckInView: View {
                 VideoPlayer(player: AVPlayer(url: videoURL))
                     .frame(height: 250)
                     .cornerRadius(AppTheme.Radii.lg)
-                    .shadow(color: .black.opacity(scheme == .dark ? 0.35 : 0.12),
-                            radius: 6, x: 0, y: 4)
             } else {
                 RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
                     .fill(Color(UIColor.tertiarySystemFill))
@@ -387,38 +282,24 @@ struct CheckInView: View {
                     .frame(maxWidth: .infinity)
                     .background(AppTheme.Colors.accentSoft)
                     .cornerRadius(AppTheme.Radii.lg)
-                    .foregroundColor(AppTheme.Colors.textPrimary)
             }
         }
         .cardBackground(scheme)
     }
 
-    // MARK: - Save Logic
-    private func saveAndNotify() {
-        saveReflection()
-        Haptics.success()
-        withAnimation(.easeInOut(duration: 0.25)) {
-            showSuccessBanner = true
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            withAnimation(.easeInOut(duration: 0.25)) {
-                showSuccessBanner = false
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                dismiss()
-            }
-        }
-    }
-
+    // MARK: - Save Reflection
     private func saveReflection() {
+
         var savedVideoPath: String?
         var savedAudioPath: String?
 
+        // Save video
         if let url = videoURL,
            let path = VideoFileManager.shared.saveVideoToDocuments(videoURL: url) {
             savedVideoPath = path
         }
 
+        // Save audio
         if let url = tempAudioURL,
            let path = AudioFileManager.shared.saveAudioToDocuments(audioURL: url) {
             savedAudioPath = path
@@ -427,38 +308,42 @@ struct CheckInView: View {
             tempAudioURL = nil
         }
 
-        let newEntry = ReflectionEntry(context: viewContext)
-        newEntry.id = UUID()
-        newEntry.timestamp = Date()
-        newEntry.text = reflectionText
-        newEntry.videoPath = savedVideoPath
-        newEntry.audioPath = savedAudioPath
-        newEntry.mood = selectedMood
+        // Save Core Data Entry
+        let entry = ReflectionEntry(context: viewContext)
+        entry.id = UUID()
+        entry.timestamp = Date()
+        entry.text = reflectionText
+        entry.videoPath = savedVideoPath
+        entry.audioPath = savedAudioPath
+        entry.mood = mood.storageValue
 
         do {
             try viewContext.save()
-            // 🔔 Reschedule notifications dynamically when a new mood is saved
-            NotificationManager.shared.scheduleMoodBasedReminders(context: viewContext)
-            print("✅ Reflection saved.")
+            Haptics.success()
+
+            // 🔥 Send banner to HomeView
+            lastMoodTypeRaw = mood.storageValue
+            lastMoodBannerMessage = mood.bannerMessage
+
+            // Clear UI
             reflectionText = ""
             videoURL = nil
-        } catch {
-            print("❌ Error: \(error.localizedDescription)")
-        }
-    }
 
-    private func dismissKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
-                                        to: nil, from: nil, for: nil)
+            dismiss()
+
+        } catch {
+            print("❌ Error saving reflection: \(error.localizedDescription)")
+        }
     }
 }
 
+// MARK: - Preview
 #Preview {
-    CheckInView(isTabBarHidden: .constant(false), selectedMood: "Happy")
+    CheckInView(isTabBarHidden: .constant(false), mood: .happy)
         .environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
 }
 
-// MARK: - Audio Capture Strip
+// MARK: - Audio Capture Strip (unchanged)
 private struct AudioCaptureStrip: View {
     @Binding var tempAudioURL: URL?
     @Binding var audioFilenameSaved: String?
@@ -466,7 +351,7 @@ private struct AudioCaptureStrip: View {
 
     var body: some View {
         VStack(spacing: AppTheme.Spacing.sm) {
-            if let filename = audioFilenameSaved, !filename.isEmpty {
+            if let filename = audioFilenameSaved {
                 AudioPlayerView(audioFilename: filename)
             } else if let url = tempAudioURL {
                 InlineAudioPlayer(audioURL: url)
@@ -478,15 +363,14 @@ private struct AudioCaptureStrip: View {
             }
 
             Button(action: onRecord) {
-                HStack(spacing: 8) {
+                HStack {
                     Image(systemName: "mic.circle.fill")
-                    Text("Record Voice Note").fontWeight(.medium)
+                    Text("Record Voice Note")
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
                 .background(AppTheme.Colors.accentSoft)
                 .cornerRadius(AppTheme.Radii.lg)
-                .foregroundColor(AppTheme.Colors.textPrimary)
             }
         }
     }
@@ -499,26 +383,26 @@ private struct InlineAudioPlayer: View {
     @State private var player: AVAudioPlayer?
 
     var body: some View {
-        HStack(spacing: AppTheme.Spacing.md) {
+        HStack {
             Button(action: togglePlayback) {
                 Image(systemName: isPlaying ? "pause.circle.fill" : "play.circle.fill")
                     .resizable()
                     .frame(width: 40, height: 40)
                     .foregroundColor(AppTheme.Colors.accent)
             }
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading) {
                 Text(isPlaying ? "Playing..." : "Voice note ready")
-                    .appBody()
                 Text(audioURL.lastPathComponent)
                     .font(.caption2)
-                    .foregroundColor(AppTheme.Colors.textSecondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .foregroundColor(.gray)
             }
             Spacer()
         }
         .padding()
-        .modifier(CardBGShim())
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(AppTheme.Colors.cardBg(.light))
+        )
         .onDisappear { player?.stop() }
     }
 
@@ -528,54 +412,11 @@ private struct InlineAudioPlayer: View {
             isPlaying = false
         } else {
             if player == nil {
-                do {
-                    player = try AVAudioPlayer(contentsOf: audioURL)
-                    player?.prepareToPlay()
-                } catch {
-                    print("❌ Audio load error: \(error.localizedDescription)")
-                }
+                player = try? AVAudioPlayer(contentsOf: audioURL)
+                player?.prepareToPlay()
             }
             player?.play()
             isPlaying = true
         }
-    }
-}
-
-// MARK: - Success Banner View
-private struct SuccessBannerView: View {
-    var message: String
-    @Environment(\.colorScheme) private var scheme
-
-    var body: some View {
-        HStack(spacing: AppTheme.Spacing.sm) {
-            Image(systemName: "checkmark.seal.fill")
-                .foregroundColor(.green)
-            Text(message)
-                .font(.subheadline).bold()
-                .foregroundColor(AppTheme.Colors.textPrimary)
-        }
-        .padding(.horizontal, AppTheme.Spacing.md)
-        .padding(.vertical, AppTheme.Spacing.sm)
-        .background(
-            Capsule(style: .continuous)
-                .fill(AppTheme.Colors.successSoft)
-                .shadow(color: .black.opacity(scheme == .dark ? 0.35 : 0.12),
-                        radius: 6, x: 0, y: 4)
-        )
-    }
-}
-
-// MARK: - Card Background Shim
-private struct CardBGShim: ViewModifier {
-    @Environment(\.colorScheme) private var scheme
-    func body(content: Content) -> some View {
-        content
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.Radii.lg)
-                    .fill(AppTheme.Colors.cardBg(scheme))
-            )
-            .cornerRadius(AppTheme.Radii.lg)
-            .shadow(color: .black.opacity(scheme == .dark ? 0.25 : 0.07),
-                    radius: 4, x: 0, y: 2)
     }
 }

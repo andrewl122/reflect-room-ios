@@ -12,7 +12,7 @@ struct ReflectionPromptView: View {
     var reflections: [ReflectionEntry]
     var isPremium: Bool
     @Binding var reflectionText: String   // ✅ Autofill selected text
-    var selectedMood: String? = nil       // ✅ Mood passed from Check-In
+    var selectedMood: MoodType? = nil
     
     @Environment(\.colorScheme) private var scheme
     @Environment(\.dismiss) private var dismiss
@@ -216,7 +216,7 @@ extension View {
         reflections: [],
         isPremium: false,
         reflectionText: .constant(""),
-        selectedMood: "Happy"
+        selectedMood: .happy
     )
     .environment(\.colorScheme, .light)
     .padding()

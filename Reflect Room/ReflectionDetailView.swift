@@ -36,10 +36,10 @@ struct ReflectionDetailView: View {
 
                     // MARK: - Mood + Date
                     HStack(spacing: AppTheme.Spacing.sm) {
-                        Text(moodEmoji(for: entry.mood ?? ""))
+                        Text(entry.moodDisplayIcon)
                             .font(.largeTitle)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(entry.mood ?? "Unknown Mood")
+                            Text(entry.moodDisplayTitle)
                                 .appHeadline()
                             if let date = entry.timestamp {
                                 Text(date.formatted(date: .abbreviated, time: .shortened))
@@ -216,17 +216,6 @@ struct ReflectionDetailView: View {
     }
 
     // MARK: - Helpers
-    private func moodEmoji(for mood: String) -> String {
-        switch mood.lowercased() {
-        case "happy": return "😊"
-        case "sad": return "😢"
-        case "okay": return "😐"
-        case "angry": return "😠"
-        case "anxious": return "😰"
-        default: return "🪞"
-        }
-    }
-
     private func getVideoURL(from path: String) -> URL? {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
         return docs?.appendingPathComponent(path)

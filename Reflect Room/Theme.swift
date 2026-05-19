@@ -5,25 +5,28 @@
 //  Created by Andrew Lawrence on 11/1/25.
 //
 
-
 import SwiftUI
 
 // MARK: - Design Tokens
 enum AppTheme {
     enum Colors {
+        // Brand Accent
         static let accent      = Color.purple
         static let accentSoft  = Color.purple.opacity(0.18)
         static let successSoft = Color.green.opacity(0.22)
         static let dangerSoft  = Color.red.opacity(0.18)
 
-        static let textPrimary   = Color.primary
-        static let textSecondary = Color.secondary
+        // 🔤 Text: locked for light backgrounds
+        // Anything that would normally flip white in Dark Mode now stays dark & readable.
+        static let textPrimary   = Color.black.opacity(0.9)
+        static let textSecondary = Color.black.opacity(0.6)
 
-        static let cardBgLight = Color(UIColor.secondarySystemBackground)
-        static let cardBgDark  = Color(UIColor.secondarySystemBackground).opacity(0.9)
+        // 🧾 Card Background: stable, soft, non-adaptive
+        // Used by cardBg(_:) everywhere (Home, Settings, Timeline, etc.)
+        static let cardBgBase = Color.white.opacity(0.92)
 
         static func cardBg(_ scheme: ColorScheme) -> Color {
-            scheme == .dark ? cardBgDark : cardBgLight
+            cardBgBase
         }
     }
 
@@ -52,6 +55,7 @@ struct TitleStyle: ViewModifier {
             .tracking(0.2)
     }
 }
+
 struct HeadlineStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -59,6 +63,7 @@ struct HeadlineStyle: ViewModifier {
             .foregroundColor(AppTheme.Colors.textPrimary)
     }
 }
+
 struct BodyStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -66,6 +71,7 @@ struct BodyStyle: ViewModifier {
             .foregroundColor(AppTheme.Colors.textPrimary)
     }
 }
+
 struct SubtleLabelStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
@@ -80,12 +86,13 @@ extension View {
     func appBody() -> some View { modifier(BodyStyle()) }
     func subtleLabel() -> some View { modifier(SubtleLabelStyle()) }
 
-    /// A consistent card background with corner radius and shadow. Adds outer padding once.
-    func cardBackground(_ scheme: ColorScheme, padding: CGFloat = AppTheme.Spacing.md) -> some View {
+    /// Consistent card background with radius + shadow
+    func cardBackground(_ scheme: ColorScheme,
+                        padding: CGFloat = AppTheme.Spacing.md) -> some View {
         self
             .background(AppTheme.Colors.cardBg(scheme))
             .cornerRadius(AppTheme.Radii.lg)
-            .shadow(color: .black.opacity(scheme == .dark ? 0.25 : 0.07), radius: 8, x: 0, y: 4)
+            .shadow(color: .black.opacity(0.07), radius: 8, x: 0, y: 4)
             .padding(padding)
     }
 }
@@ -108,10 +115,12 @@ struct StreakBar: View {
             ZStack(alignment: .leading) {
                 RoundedRectangle(cornerRadius: AppTheme.Radii.sm)
                     .fill(AppTheme.Colors.cardBg(scheme).opacity(0.6))
+
                 RoundedRectangle(cornerRadius: AppTheme.Radii.sm)
                     .fill(AppTheme.Colors.textPrimary.opacity(0.85))
                     .frame(width: max(0, min(geo.size.width * anim, geo.size.width)))
-                    .animation(.spring(response: 0.6, dampingFraction: 0.8), value: anim)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.8),
+                               value: anim)
             }
         }
         .frame(height: 10)

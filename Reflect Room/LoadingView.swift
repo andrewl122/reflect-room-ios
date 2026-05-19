@@ -1,6 +1,6 @@
 //
 //  LoadingView.swift
-//  ReflectRoom
+//  Reflect Room
 //
 //  Created by Andrew Lawrence on 11/1/25.
 //
@@ -43,13 +43,19 @@ struct LoadingView: View {
                     Color(red: 216/255, green: 190/255, blue: 255/255),
                     Color(red: 170/255, green: 210/255, blue: 255/255),
                     Color(red: 255/255, green: 240/255, blue: 255/255)
+                    
+//                    Color(red: 215/255, green: 201/255, blue: 255/255), // Lavender
+//                    Color(red: 182/255, green: 212/255, blue: 255/255), // Blue
+//                    Color(red: 189/255, green: 244/255, blue: 216/255), // Mint
+//                    Color(red: 255/255, green: 213/255, blue: 184/255), // Peach
+//                    Color(red: 255/255, green: 199/255, blue: 214/255)  // Pink
                 ]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .hueRotation(.degrees(hueRotate ? 360 : 0))
             .animation(
-                .linear(duration: 10).repeatForever(autoreverses: false),
+                .linear(duration: 8).repeatForever(autoreverses: false), // ⏱ now 3s instead of 10
                 value: hueRotate
             )
             .ignoresSafeArea()
@@ -73,7 +79,7 @@ struct LoadingView: View {
 
                 Spacer()
 
-                // Footer line (same color as title & quote)
+                // Footer line
                 Text("Loading your reflection space...")
                     .font(.footnote)
                     .foregroundColor(sharedColor)
@@ -89,7 +95,8 @@ struct LoadingView: View {
         }
         .onAppear {
             hueRotate = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+            // ⏳ Match timing to animation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
                 withAnimation {
                     navigateToHome = true
                 }
@@ -97,7 +104,6 @@ struct LoadingView: View {
         }
     }
 
-    // Adaptive shared color used for title, quote, and footer
     private var sharedColor: Color {
         colorScheme == .dark ? Color.white.opacity(0.9) : Color.black.opacity(0.9)
     }
